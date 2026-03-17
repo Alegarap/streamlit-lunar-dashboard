@@ -21,6 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+style.theme_toggle()
 style.apply()
 
 # --- Sidebar ---

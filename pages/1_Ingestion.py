@@ -16,8 +16,9 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import COLORS, SOURCE_ORDER, metric_row
+from lib.charts import COLORS, SOURCE_ORDER, apply_plotly_theme, metric_row
 
+style.theme_toggle()
 style.apply()
 st.title("Ingestion Dashboard")
 
@@ -118,6 +119,7 @@ with tab_daily:
         title="Daily Ingestion by Source",
     )
     fig.update_layout(barmode="stack", xaxis_tickformat="%b %d")
+    apply_plotly_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_weekly:
@@ -136,6 +138,7 @@ with tab_weekly:
         title="Weekly Ingestion by Source",
     )
     fig.update_layout(barmode="stack", xaxis_tickformat="%b %d")
+    apply_plotly_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_monthly:
@@ -159,6 +162,7 @@ with tab_monthly:
         title="Monthly Ingestion by Source",
     )
     fig.update_layout(barmode="stack")
+    apply_plotly_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 # --- Latest items table ---

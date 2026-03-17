@@ -21,10 +21,10 @@ from lib.charts import format_cost
 st.set_page_config(page_title="Ask Data | Lunar BI", layout="wide", page_icon="🤖")
 st.title("🤖 Ask Data")
 
-OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY_FALLBACK", "")
+OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
 if not OPENROUTER_KEY:
     st.error(
-        "Missing OPENROUTER_KEY_FALLBACK. Relaunch via `claude-ops` "
+        "Missing OPENROUTER_KEY_STREAMLIT. Relaunch via `claude-ops` "
         "so 1Password resolves all secrets."
     )
     st.stop()

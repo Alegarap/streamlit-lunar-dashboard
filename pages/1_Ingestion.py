@@ -17,11 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib.charts import COLORS, SOURCE_ORDER, metric_row
 
-st.set_page_config(page_title="Ingestion | Lunar BI", layout="wide", page_icon="📊")
-st.title("📊 Ingestion Dashboard")
+st.title("Ingestion Dashboard")
 
 # --- Fetch data ---
-raw = sb.rpc("get_ingestion_stats", {"p_days": 180})
+raw = sb.rpc_call("get_ingestion_stats", {"p_days": 180})
 if not raw:
     st.warning("No ingestion data returned from Supabase.")
     st.stop()
@@ -145,7 +144,7 @@ with tab_monthly:
 # --- Latest items table ---
 st.divider()
 st.subheader("Latest Items")
-latest = sb.query("items", {
+latest = sb.query_table("items", {
     "select": "created_at,source,type,title,source_url,cluster_id",
     "order": "created_at.desc",
     "limit": "100",

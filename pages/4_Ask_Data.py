@@ -7,6 +7,7 @@ SQL queries against Supabase, then renders results as tables/charts.
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -18,14 +19,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib.charts import format_cost
 
-st.set_page_config(page_title="Ask Data | Lunar BI", layout="wide", page_icon="🤖")
-st.title("🤖 Ask Data")
+st.title("Ask Data")
 
-OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
+# Resolve API key from st.secrets or os.environ
+OPENROUTER_KEY = ""
+try:
+    OPENROUTER_KEY = st.secrets.get("OPENROUTER_KEY_STREAMLIT", "")
+except FileNotFoundError:
+    pass
+if not OPENROUTER_KEY:
+    OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
 if not OPENROUTER_KEY:
     st.error(
-        "Missing OPENROUTER_KEY_STREAMLIT. Relaunch via `claude-ops` "
-        "so 1Password resolves all secrets."
+        "Missing OPENROUTER_KEY_STREAMLIT. Add it to Streamlit Cloud secrets "
+        "or relaunch locally via `claude-ops`."
     )
     st.stop()
 
@@ -40,7 +47,7 @@ SCHEMA_CONTEXT = """You are a data analyst for Lunar Ventures. You help answer q
 - stage (TEXT: 'raw','triage','curated','scored','setup','live','disqualified')
 - signal_strength (TEXT: 'strong','medium','weak'), priority (INT 0-4)
 - source_labels (TEXT[]), sector_labels (TEXT[]), metadata (JSONB), scores (JSONB)
-- cluster_id (UUID FK → clusters), embedding (vector 1536)
+- cluster_id (UUID FK -> clusters), embedding (vector 1536)
 - created_at (TIMESTAMPTZ), updated_at, source_date, synced_at
 
 ### clusters — Groups of similar items
@@ -60,9 +67,9 @@ SCHEMA_CONTEXT = """You are a data analyst for Lunar Ventures. You help answer q
 - execution_id (TEXT), api_key_name (TEXT), created_at (TIMESTAMPTZ)
 
 ## Available RPCs
-- get_ingestion_stats(p_days INT) → day, source, type, item_count
-- get_hot_clusters(min_score FLOAT, lim INT) → cluster rows
-- get_cost_stats(p_days INT) → day, workflow_key, model, request_count, tokens, cost
+- get_ingestion_stats(p_days INT) -> day, source, type, item_count
+- get_hot_clusters(min_score FLOAT, lim INT) -> cluster rows
+- get_cost_stats(p_days INT) -> day, workflow_key, model, request_count, tokens, cost
 
 ## Response Format
 Return a JSON object with:
@@ -86,8 +93,9 @@ quick_queries = [
     "Clusters with multi-source convergence",
 ]
 for col, q in zip(quick_cols, quick_queries):
-    if col.button(q, use_container_width=True):
+    if col.button(q, use_container_width=True, key=f"quick_{q}"):
         st.session_state["ask_input"] = q
+        st.rerun()
 
 # --- Chat interface ---
 if "messages" not in st.session_state:
@@ -98,9 +106,7 @@ for msg in st.session_state.messages:
         if msg.get("content"):
             st.markdown(msg["content"])
         if msg.get("dataframe") is not None:
-            st.dataframe(msg["dataframe"], use_container_width=True, hide_index=True)
-        if msg.get("chart"):
-            st.plotly_chart(msg["chart"], use_container_width=True)
+            st.dataframe(pd.DataFrame(msg["dataframe"]), use_container_width=True, hide_index=True)
 
 prompt = st.chat_input("Ask a question about your data...") or st.session_state.pop("ask_input", None)
 
@@ -129,6 +135,7 @@ if prompt:
                     "Content-Type": "application/json",
                 },
             )
+            query_spec = None
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     ai_response = json.loads(resp.read())
@@ -143,60 +150,74 @@ if prompt:
             except Exception as e:
                 st.error(f"AI query failed: {e}")
                 st.session_state.messages.append({"role": "assistant", "content": f"Error: {e}"})
-                st.stop()
+
+        if query_spec is None:
+            st.stop()
 
         # Execute the query
         explanation = query_spec.get("explanation", "")
         st.caption(explanation)
 
+        data = None
         try:
             if query_spec["query_type"] == "rpc":
-                data = sb.rpc(query_spec["function"], query_spec.get("params", {}))
+                data = sb.rpc_call(query_spec["function"], query_spec.get("params", {}))
             else:
-                data = sb.query(query_spec["table"], query_spec.get("params", {}))
+                data = sb.query_table(query_spec["table"], query_spec.get("params", {}))
         except Exception as e:
             st.error(f"Query failed: {e}")
             st.session_state.messages.append({"role": "assistant", "content": f"Query error: {e}"})
-            st.stop()
 
         if not data:
-            st.info("No results found.")
-            st.session_state.messages.append({"role": "assistant", "content": "No results found."})
+            if data is None:
+                # Query itself errored — already handled above
+                pass
+            else:
+                st.info("No results found.")
+                st.session_state.messages.append({"role": "assistant", "content": "No results found."})
             st.stop()
 
         df = pd.DataFrame(data)
         display = query_spec.get("display", "table")
         chart_config = query_spec.get("chart_config", {})
-        msg_data = {"role": "assistant", "content": explanation}
+        msg_data = {"role": "assistant", "content": explanation, "dataframe": df.to_dict(orient="records")}
 
         if display == "table" or display == "text":
             st.dataframe(df, use_container_width=True, hide_index=True)
-            msg_data["dataframe"] = df
 
         elif display == "metric" and len(df) == 1:
             cols = st.columns(len(df.columns))
             for col, c in zip(cols, df.columns):
                 col.metric(c, df[c].iloc[0])
-            msg_data["content"] = explanation
 
         elif display in ("bar_chart", "line_chart", "pie_chart"):
-            x = chart_config.get("x", df.columns[0])
-            y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else df.columns[0])
+            x = chart_config.get("x", df.columns[0] if len(df.columns) > 0 else None)
+            y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else (df.columns[0] if len(df.columns) > 0 else None))
             color = chart_config.get("color")
 
-            if display == "bar_chart":
-                fig = px.bar(df, x=x, y=y, color=color)
-            elif display == "line_chart":
-                fig = px.line(df, x=x, y=y, color=color)
-            else:
-                fig = px.pie(df, names=x, values=y)
+            # Validate columns exist in the DataFrame
+            if x and x not in df.columns:
+                x = df.columns[0] if len(df.columns) > 0 else None
+            if y and y not in df.columns:
+                y = df.columns[1] if len(df.columns) > 1 else (df.columns[0] if len(df.columns) > 0 else None)
+            if color and color not in df.columns:
+                color = None
 
-            st.plotly_chart(fig, use_container_width=True)
+            if x and y:
+                try:
+                    if display == "bar_chart":
+                        fig = px.bar(df, x=x, y=y, color=color)
+                    elif display == "line_chart":
+                        fig = px.line(df, x=x, y=y, color=color)
+                    else:
+                        fig = px.pie(df, names=x, values=y)
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception:
+                    pass  # Fall through to table display below
+
             st.dataframe(df, use_container_width=True, hide_index=True)
-            msg_data["dataframe"] = df
 
         else:
             st.dataframe(df, use_container_width=True, hide_index=True)
-            msg_data["dataframe"] = df
 
         st.session_state.messages.append(msg_data)

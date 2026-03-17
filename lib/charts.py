@@ -1,5 +1,7 @@
 """Shared chart helpers for the Streamlit dashboard."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 # Consistent color palette across all pages
@@ -28,6 +30,8 @@ WORKFLOW_NAMES = {
     "OPENROUTER_KEY_FALLBACK": "Fallback",
     "OPENROUTER_KEY_CHOP_SHOP": "Chop Shop",
     "OPENROUTER_KEY_STREAMLIT": "Streamlit Dashboard",
+    "Streamlit Dashboard": "Streamlit Dashboard",
+    "factory": "Default Key (factory)",
     "unknown": "Unknown",
 }
 

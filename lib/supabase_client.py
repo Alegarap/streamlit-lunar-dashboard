@@ -4,6 +4,8 @@ Reuses the same REST API patterns from sourcing_dashboard.py.
 Credentials come from Streamlit secrets (st.secrets) with os.environ fallback.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import urllib.error

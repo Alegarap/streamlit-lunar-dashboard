@@ -14,6 +14,28 @@ COLORS = {
 
 SOURCE_ORDER = ["linear", "hackernews", "arxiv", "conference", "tigerclaw"]
 
+# Human-readable names for workflow keys (from OpenRouter API key names)
+WORKFLOW_NAMES = {
+    "OPENROUTER_KEY_TT_RESEARCH_THEMES": "Research Themes",
+    "OPENROUTER_KEY_TT_DEEP_RESEARCH_RESULTS": "Deep Research",
+    "OPENROUTER_KEY_TT_SETUP_FIND_ALL": "Setup Find All",
+    "OPENROUTER_KEY_TT_CHECK_PUSH_CANDIDATES": "Check & Push Candidates",
+    "OPENROUTER_KEY_AS_AMBIENT_SOURCING": "Ambient Sourcing",
+    "OPENROUTER_KEY_AS_HN_SOURCING": "HN Sourcing",
+    "OPENROUTER_KEY_AS_ACADEMIC_SOURCING": "Academic Sourcing",
+    "OPENROUTER_KEY_AS_CONFERENCE_SOURCING": "Conference Sourcing",
+    "OPENROUTER_KEY_DEAL_VALIDATION": "Deal Validation",
+    "OPENROUTER_KEY_FALLBACK": "Fallback",
+    "OPENROUTER_KEY_CHOP_SHOP": "Chop Shop",
+    "OPENROUTER_KEY_STREAMLIT": "Streamlit Dashboard",
+    "unknown": "Unknown",
+}
+
+
+def workflow_display_name(key: str) -> str:
+    """Convert a workflow key like OPENROUTER_KEY_FALLBACK to a human-readable name."""
+    return WORKFLOW_NAMES.get(key, key)
+
 
 def metric_row(cols_data: list[tuple[str, str | int | float, str | None]]):
     """Render a row of st.metric() cards.

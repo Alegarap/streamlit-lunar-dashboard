@@ -15,9 +15,17 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
-from lib.charts import format_cost, metric_row
+from lib import style
+from lib.charts import format_cost, metric_row, workflow_display_name
 
+style.apply()
 st.title("Cost Tracking")
+
+with st.sidebar:
+    st.caption("Data refreshes every 5 minutes")
+    if st.button("Refresh now", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 # --- Check if cost_log table / RPC exists ---
 try:
@@ -41,8 +49,8 @@ except Exception as e:
 
 if not cost_data:
     st.info(
-        "No cost data yet. The n8n Broadcast Receiver needs to be updated to write to "
-        "the `cost_log` table. Cost data will appear here once that's configured."
+        "No cost data yet. Cost data will appear here once natural workflow "
+        "executions start flowing through the n8n Broadcast Receiver."
     )
     st.stop()
 
@@ -50,9 +58,18 @@ if not cost_data:
 df = pd.DataFrame(cost_data)
 df["day"] = pd.to_datetime(df["day"])
 df["total_cost"] = pd.to_numeric(df["total_cost"], errors="coerce").fillna(0)
-df["total_input_tokens"] = pd.to_numeric(df.get("total_input_tokens", 0), errors="coerce").fillna(0).astype(int)
-df["total_output_tokens"] = pd.to_numeric(df.get("total_output_tokens", 0), errors="coerce").fillna(0).astype(int)
-df["request_count"] = pd.to_numeric(df.get("request_count", 0), errors="coerce").fillna(0).astype(int)
+if "total_input_tokens" in df.columns:
+    df["total_input_tokens"] = pd.to_numeric(df["total_input_tokens"], errors="coerce").fillna(0).astype(int)
+if "total_output_tokens" in df.columns:
+    df["total_output_tokens"] = pd.to_numeric(df["total_output_tokens"], errors="coerce").fillna(0).astype(int)
+if "request_count" in df.columns:
+    df["request_count"] = pd.to_numeric(df["request_count"], errors="coerce").fillna(0).astype(int)
+else:
+    df["request_count"] = 1
+
+# Map workflow keys to human-readable names
+if "workflow_key" in df.columns:
+    df["workflow"] = df["workflow_key"].apply(workflow_display_name)
 
 today = datetime.now().date()
 
@@ -86,7 +103,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Daily Cost Trend")
-    daily = df.groupby("day").agg({"total_cost": "sum"}).reset_index()
+    daily = df.groupby("day").agg({"total_cost": "sum"}).reset_index().sort_values("day")
     if len(daily) > 1:
         fig = px.area(
             daily, x="day", y="total_cost",
@@ -104,14 +121,14 @@ with col1:
 
 with col2:
     st.subheader("Cost by Workflow")
-    if "workflow_key" in df.columns:
-        by_wf = df.groupby("workflow_key").agg({"total_cost": "sum"}).reset_index()
+    if "workflow" in df.columns:
+        by_wf = df.groupby("workflow").agg({"total_cost": "sum"}).reset_index()
         by_wf = by_wf.sort_values("total_cost", ascending=True)
         fig = px.bar(
-            by_wf, x="total_cost", y="workflow_key",
+            by_wf, x="total_cost", y="workflow",
             orientation="h",
             title="Total Spend by Workflow",
-            labels={"total_cost": "Cost ($)", "workflow_key": "Workflow"},
+            labels={"total_cost": "Cost ($)", "workflow": "Workflow"},
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -144,20 +161,20 @@ if "model" in df.columns:
     )
 
 # --- Cost by workflow over time ---
-if "workflow_key" in df.columns:
+if "workflow" in df.columns:
     st.subheader("Daily Cost by Workflow")
-    daily_wf = df.groupby(["day", "workflow_key"]).agg({"total_cost": "sum"}).reset_index()
+    daily_wf = df.groupby(["day", "workflow"]).agg({"total_cost": "sum"}).reset_index().sort_values("day")
     if len(daily_wf) > 1:
         fig = px.area(
-            daily_wf, x="day", y="total_cost", color="workflow_key",
+            daily_wf, x="day", y="total_cost", color="workflow",
             title="Cost Breakdown Over Time",
-            labels={"day": "Date", "total_cost": "Cost ($)", "workflow_key": "Workflow"},
+            labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
         )
     else:
         fig = px.bar(
-            daily_wf, x="day", y="total_cost", color="workflow_key",
+            daily_wf, x="day", y="total_cost", color="workflow",
             title="Cost Breakdown Over Time",
-            labels={"day": "Date", "total_cost": "Cost ($)", "workflow_key": "Workflow"},
+            labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")
     st.plotly_chart(fig, use_container_width=True)

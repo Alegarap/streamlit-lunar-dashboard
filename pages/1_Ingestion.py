@@ -15,9 +15,17 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
+from lib import style
 from lib.charts import COLORS, SOURCE_ORDER, metric_row
 
+style.apply()
 st.title("Ingestion Dashboard")
+
+with st.sidebar:
+    st.caption("Data refreshes every 5 minutes")
+    if st.button("Refresh now", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 # --- Fetch data ---
 raw = sb.rpc_call("get_ingestion_stats", {"p_days": 180})
@@ -64,19 +72,33 @@ prev_week_dates = [(prev_monday + timedelta(days=i)).isoformat() for i in range(
 prev_week_stats = sum_period(prev_week_dates)
 
 # --- Scorecards ---
-st.subheader("Today")
-metric_row([
-    ("Themes", today_stats["themes"], f"{today_stats['themes'] - yesterday_stats['themes']:+d} vs yesterday"),
-    ("Deals", today_stats["deals"], f"{today_stats['deals'] - yesterday_stats['deals']:+d} vs yesterday"),
-    ("Total", today_stats["total"], f"{today_stats['total'] - yesterday_stats['total']:+d} vs yesterday"),
-])
-
-st.subheader("This Week")
-metric_row([
-    ("Themes", week_stats["themes"], f"{week_stats['themes'] - prev_week_stats['themes']:+d} vs last week"),
-    ("Deals", week_stats["deals"], f"{week_stats['deals'] - prev_week_stats['deals']:+d} vs last week"),
-    ("Total", week_stats["total"], f"{week_stats['total'] - prev_week_stats['total']:+d} vs last week"),
-])
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader("Today")
+    metric_row([
+        ("Themes", today_stats["themes"],
+         f"{today_stats['themes'] - yesterday_stats['themes']:+d} vs yesterday"
+         if today_stats["themes"] != yesterday_stats["themes"] else None),
+        ("Deals", today_stats["deals"],
+         f"{today_stats['deals'] - yesterday_stats['deals']:+d} vs yesterday"
+         if today_stats["deals"] != yesterday_stats["deals"] else None),
+        ("Total", today_stats["total"],
+         f"{today_stats['total'] - yesterday_stats['total']:+d} vs yesterday"
+         if today_stats["total"] != yesterday_stats["total"] else None),
+    ])
+with col2:
+    st.subheader("This Week")
+    metric_row([
+        ("Themes", week_stats["themes"],
+         f"{week_stats['themes'] - prev_week_stats['themes']:+d} vs last week"
+         if week_stats["themes"] != prev_week_stats["themes"] else None),
+        ("Deals", week_stats["deals"],
+         f"{week_stats['deals'] - prev_week_stats['deals']:+d} vs last week"
+         if week_stats["deals"] != prev_week_stats["deals"] else None),
+        ("Total", week_stats["total"],
+         f"{week_stats['total'] - prev_week_stats['total']:+d} vs last week"
+         if week_stats["total"] != prev_week_stats["total"] else None),
+    ])
 
 # --- Source breakdown charts ---
 st.divider()
@@ -84,7 +106,7 @@ tab_daily, tab_weekly, tab_monthly = st.tabs(["Daily (30d)", "Weekly (12w)", "Mo
 
 with tab_daily:
     rows = []
-    for i in range(30):
+    for i in range(29, -1, -1):  # oldest first for correct chart ordering
         d = today - timedelta(days=i)
         ds = d.isoformat()
         for src in SOURCE_ORDER:
@@ -102,7 +124,7 @@ with tab_daily:
 
 with tab_weekly:
     rows = []
-    for w in range(12):
+    for w in range(11, -1, -1):  # oldest first
         ws = last_monday - timedelta(weeks=w)
         dates = [(ws + timedelta(days=i)).isoformat() for i in range(7)]
         for src in SOURCE_ORDER:
@@ -120,7 +142,7 @@ with tab_weekly:
 
 with tab_monthly:
     rows = []
-    for m in range(6):
+    for m in range(5, -1, -1):  # oldest first
         month = today.month - m
         year = today.year
         while month <= 0:
@@ -145,7 +167,7 @@ with tab_monthly:
 st.divider()
 st.subheader("Latest Items")
 latest = sb.query_table("items", {
-    "select": "created_at,source,type,title,source_url,cluster_id",
+    "select": "created_at,source,type,title,source_url",
     "order": "created_at.desc",
     "limit": "100",
 })
@@ -159,10 +181,12 @@ if latest:
             "type": "Type",
             "title": "Title",
             "source_url": "URL",
-            "cluster_id": "Cluster",
         }),
         use_container_width=True,
         hide_index=True,
+        column_config={
+            "URL": st.column_config.LinkColumn("URL", display_text="Link"),
+        },
     )
 else:
     st.info("No items found.")

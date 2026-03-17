@@ -43,16 +43,9 @@ CUSTOM_CSS = """
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-/* Sidebar: rename "app" entry to "Home" */
-[data-testid="stSidebarNav"] li:first-child span {
-    visibility: hidden;
-    position: relative;
-}
-[data-testid="stSidebarNav"] li:first-child span::after {
-    content: "Home";
-    visibility: visible;
-    position: absolute;
-    left: 0;
+/* Sidebar: hide the "app" entry since home is accessible via title */
+[data-testid="stSidebarNav"] li:first-child {
+    display: none;
 }
 
 /* Tabs */

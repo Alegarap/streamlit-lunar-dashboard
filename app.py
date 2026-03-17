@@ -25,6 +25,7 @@ style.apply()
 
 # --- Sidebar ---
 with st.sidebar:
+    st.markdown("#### Lunar Ventures")
     st.caption("Data refreshes every 5 minutes")
     if st.button("Refresh now", use_container_width=True):
         st.cache_data.clear()

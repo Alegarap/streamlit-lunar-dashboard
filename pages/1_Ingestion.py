@@ -79,11 +79,11 @@ with col1:
     yd = yesterday_stats
     metric_row([
         ("Themes", td["themes"],
-         f"{td['themes'] - yd['themes']:+d} yday" if td["themes"] != yd["themes"] else None),
+         f"{td['themes'] - yd['themes']:+d}" if td["themes"] != yd["themes"] else None),
         ("Deals", td["deals"],
-         f"{td['deals'] - yd['deals']:+d} yday" if td["deals"] != yd["deals"] else None),
+         f"{td['deals'] - yd['deals']:+d}" if td["deals"] != yd["deals"] else None),
         ("Total", td["total"],
-         f"{td['total'] - yd['total']:+d} yday" if td["total"] != yd["total"] else None),
+         f"{td['total'] - yd['total']:+d}" if td["total"] != yd["total"] else None),
     ])
 with col2:
     st.subheader("This Week")
@@ -91,11 +91,11 @@ with col2:
     pw = prev_week_stats
     metric_row([
         ("Themes", ws["themes"],
-         f"{ws['themes'] - pw['themes']:+d} prev wk" if ws["themes"] != pw["themes"] else None),
+         f"{ws['themes'] - pw['themes']:+d}" if ws["themes"] != pw["themes"] else None),
         ("Deals", ws["deals"],
-         f"{ws['deals'] - pw['deals']:+d} prev wk" if ws["deals"] != pw["deals"] else None),
+         f"{ws['deals'] - pw['deals']:+d}" if ws["deals"] != pw["deals"] else None),
         ("Total", ws["total"],
-         f"{ws['total'] - pw['total']:+d} prev wk" if ws["total"] != pw["total"] else None),
+         f"{ws['total'] - pw['total']:+d}" if ws["total"] != pw["total"] else None),
     ])
 
 # --- Source breakdown charts ---

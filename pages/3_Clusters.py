@@ -52,9 +52,11 @@ st.divider()
 # --- Top Hot Clusters ---
 if clusters:
     df_clusters = pd.DataFrame(clusters)
-    df_clusters["hotness_score"] = pd.to_numeric(df_clusters["hotness_score"], errors="coerce").fillna(0)
+    df_clusters["hotness_score"] = pd.to_numeric(df_clusters["hotness_score"], errors="coerce").fillna(0).clip(0, 1)
     df_clusters["label"] = df_clusters["label"].fillna("Unlabeled")
-    top = df_clusters.nlargest(15, "hotness_score")
+    # Filter to labeled clusters for the top chart
+    labeled = df_clusters[df_clusters["label"] != "Unlabeled"]
+    top = labeled.nlargest(15, "hotness_score") if len(labeled) >= 15 else df_clusters.nlargest(15, "hotness_score")
 
     st.subheader("Top 15 Hot Clusters")
 

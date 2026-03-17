@@ -225,9 +225,37 @@ hr {
     border-color: #6366F1 !important;
 }
 
-/* DataFrames */
+/* DataFrames — dark theme for the embedded component */
 [data-testid="stDataFrame"] {
     border-radius: 8px;
+}
+[data-testid="stDataFrame"] > div,
+[data-testid="stDataFrame"] [data-testid="glide-data-grid-canvas"],
+[data-testid="stDataFrame"] .gdg-style {
+    color-scheme: dark !important;
+}
+/* Dark background for dataframe container */
+[data-testid="stDataFrame"] > div > div {
+    background-color: #1E293B !important;
+}
+/* Column headers */
+[data-testid="stDataFrame"] [role="columnheader"] {
+    background-color: #1E293B !important;
+    color: #E2E8F0 !important;
+}
+
+/* Table element (st.table) */
+.stTable, .stTable table {
+    background-color: #1E293B !important;
+    color: #E2E8F0 !important;
+}
+.stTable th {
+    background-color: #0F172A !important;
+    color: #94A3B8 !important;
+}
+.stTable td {
+    color: #E2E8F0 !important;
+    border-color: #334155 !important;
 }
 
 /* Page links */
@@ -276,22 +304,37 @@ hr {
 .stToggle label span {
     color: #E2E8F0 !important;
 }
+
+/* Column config NumberColumn, ProgressColumn */
+[data-testid="stDataFrame"] [role="gridcell"] {
+    color: #E2E8F0 !important;
+}
 </style>
 """
 
 
 def _is_dark() -> bool:
     """Return True if the user has selected dark mode."""
-    return st.session_state.get("theme_dark", False)
+    return st.session_state.get("_theme_dark_persist", False)
+
+
+def _on_toggle_change():
+    """Callback: sync widget key to persistent key."""
+    st.session_state._theme_dark_persist = st.session_state._theme_toggle_widget
 
 
 def theme_toggle():
     """Render a light/dark theme toggle in the sidebar. Call once per page."""
+    # Initialize persistent key if needed
+    if "_theme_dark_persist" not in st.session_state:
+        st.session_state._theme_dark_persist = False
+
     with st.sidebar:
         st.toggle(
             "Dark mode",
-            value=st.session_state.get("theme_dark", False),
-            key="theme_dark",
+            value=st.session_state._theme_dark_persist,
+            key="_theme_toggle_widget",
+            on_change=_on_toggle_change,
         )
 
 

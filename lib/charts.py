@@ -61,7 +61,7 @@ def format_cost(cost: float) -> str:
 
 def plotly_theme_layout() -> dict:
     """Return Plotly layout kwargs matching the current light/dark theme."""
-    if st.session_state.get("theme_dark", False):
+    if st.session_state.get("_theme_dark_persist", False):
         return dict(
             paper_bgcolor="#0F172A",
             plot_bgcolor="#1E293B",

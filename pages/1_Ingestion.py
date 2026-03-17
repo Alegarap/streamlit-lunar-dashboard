@@ -176,6 +176,9 @@ latest = sb.query_table("items", {
 if latest:
     df_latest = pd.DataFrame(latest)
     df_latest["created_at"] = pd.to_datetime(df_latest["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
+    # Fill null URLs to prevent LinkColumn errors
+    if "source_url" in df_latest.columns:
+        df_latest["source_url"] = df_latest["source_url"].fillna("")
     st.dataframe(
         df_latest.rename(columns={
             "created_at": "Created",

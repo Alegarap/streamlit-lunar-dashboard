@@ -14,11 +14,11 @@ CUSTOM_CSS = """
 }
 
 [data-testid="stMetricLabel"] {
-    font-size: 0.85rem !important;
+    font-size: 0.8rem !important;
     color: #64748b !important;
     font-weight: 500 !important;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
 }
 
 [data-testid="stMetricValue"] {
@@ -28,7 +28,7 @@ CUSTOM_CSS = """
 }
 
 [data-testid="stMetricDelta"] {
-    font-size: 0.8rem !important;
+    font-size: 0.75rem !important;
 }
 
 /* Cleaner expanders */
@@ -41,6 +41,18 @@ CUSTOM_CSS = """
 /* Sidebar styling */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Sidebar: rename "app" entry to "Home" */
+[data-testid="stSidebarNav"] li:first-child span {
+    visibility: hidden;
+    position: relative;
+}
+[data-testid="stSidebarNav"] li:first-child span::after {
+    content: "Home";
+    visibility: visible;
+    position: absolute;
+    left: 0;
 }
 
 /* Tabs */

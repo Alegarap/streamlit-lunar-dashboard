@@ -40,11 +40,11 @@ hot_clusters = sum(1 for c in clusters if (c.get("hotness_score") or 0) > 0.3)
 labeled_clusters = sum(1 for c in clusters if c.get("label"))
 
 metric_row([
-    ("Total Items", f"{total_items:,}", None),
+    ("Items", f"{total_items:,}", None),
     ("Clustered", f"{clustered_items:,}", f"{clustering_rate:.0f}%"),
-    ("Unclustered", f"{unclustered:,}", None),
-    ("Total Clusters", total_clusters, f"{labeled_clusters} labeled"),
-    ("Hot Clusters", hot_clusters, f"score > 0.3"),
+    ("Free", f"{unclustered:,}", None),
+    ("Clusters", total_clusters, f"{labeled_clusters} labeled"),
+    ("Hot (>0.3)", hot_clusters, None),
 ])
 
 st.divider()

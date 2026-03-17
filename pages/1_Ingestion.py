@@ -75,29 +75,27 @@ prev_week_stats = sum_period(prev_week_dates)
 col1, col2 = st.columns(2)
 with col1:
     st.subheader("Today")
+    td = today_stats
+    yd = yesterday_stats
     metric_row([
-        ("Themes", today_stats["themes"],
-         f"{today_stats['themes'] - yesterday_stats['themes']:+d} vs yesterday"
-         if today_stats["themes"] != yesterday_stats["themes"] else None),
-        ("Deals", today_stats["deals"],
-         f"{today_stats['deals'] - yesterday_stats['deals']:+d} vs yesterday"
-         if today_stats["deals"] != yesterday_stats["deals"] else None),
-        ("Total", today_stats["total"],
-         f"{today_stats['total'] - yesterday_stats['total']:+d} vs yesterday"
-         if today_stats["total"] != yesterday_stats["total"] else None),
+        ("Themes", td["themes"],
+         f"{td['themes'] - yd['themes']:+d} yday" if td["themes"] != yd["themes"] else None),
+        ("Deals", td["deals"],
+         f"{td['deals'] - yd['deals']:+d} yday" if td["deals"] != yd["deals"] else None),
+        ("Total", td["total"],
+         f"{td['total'] - yd['total']:+d} yday" if td["total"] != yd["total"] else None),
     ])
 with col2:
     st.subheader("This Week")
+    ws = week_stats
+    pw = prev_week_stats
     metric_row([
-        ("Themes", week_stats["themes"],
-         f"{week_stats['themes'] - prev_week_stats['themes']:+d} vs last week"
-         if week_stats["themes"] != prev_week_stats["themes"] else None),
-        ("Deals", week_stats["deals"],
-         f"{week_stats['deals'] - prev_week_stats['deals']:+d} vs last week"
-         if week_stats["deals"] != prev_week_stats["deals"] else None),
-        ("Total", week_stats["total"],
-         f"{week_stats['total'] - prev_week_stats['total']:+d} vs last week"
-         if week_stats["total"] != prev_week_stats["total"] else None),
+        ("Themes", ws["themes"],
+         f"{ws['themes'] - pw['themes']:+d} prev wk" if ws["themes"] != pw["themes"] else None),
+        ("Deals", ws["deals"],
+         f"{ws['deals'] - pw['deals']:+d} prev wk" if ws["deals"] != pw["deals"] else None),
+        ("Total", ws["total"],
+         f"{ws['total'] - pw['total']:+d} prev wk" if ws["total"] != pw["total"] else None),
     ])
 
 # --- Source breakdown charts ---

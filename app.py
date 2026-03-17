@@ -44,11 +44,7 @@ try:
 
     # Cluster stats
     total_items = sb.count_rows("items")
-    hot_count = len(sb.query_table("clusters", {
-        "select": "id",
-        "hotness_score": "gt.0.3",
-        "limit": "100",
-    }))
+    hot_count = sb.count_rows("clusters", {"hotness_score": "gt.0.3"})
 
     # Cost stats (may not exist yet)
     try:

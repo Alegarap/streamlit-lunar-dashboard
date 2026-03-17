@@ -120,6 +120,17 @@ st.divider()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if not st.session_state.messages:
+    st.markdown(
+        '<p style="color: #94a3b8; text-align: center; margin: 3rem 0;">'
+        'Ask questions in natural language. Examples:<br>'
+        '"How many themes were added this week?" · '
+        '"Show cost breakdown by model" · '
+        '"Which clusters have items from multiple sources?"'
+        '</p>',
+        unsafe_allow_html=True,
+    )
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg.get("content"):

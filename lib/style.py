@@ -204,8 +204,8 @@ def apply():
 def _sidebar_logo():
     """Place Lunar Ventures branding above the navigation."""
     svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 44">'
-        '<text x="4" y="30" font-family="system-ui,sans-serif" font-size="24" '
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 56">'
+        '<text x="4" y="40" font-family="system-ui,sans-serif" font-size="34" '
         'font-weight="700" fill="#6366F1">&#127769; Lunar Ventures</text>'
         '</svg>'
     )

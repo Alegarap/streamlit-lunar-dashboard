@@ -16,10 +16,10 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import apply_plotly_theme, format_cost, metric_row, workflow_display_name
+from lib.charts import format_cost, metric_row, workflow_display_name
 
-style.theme_toggle()
 style.apply()
+style.sidebar_brand()
 st.title("Cost Tracking")
 
 with st.sidebar:
@@ -118,7 +118,6 @@ with col1:
             labels={"day": "Date", "total_cost": "Cost ($)"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")
-    apply_plotly_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
@@ -132,7 +131,6 @@ with col2:
             title="Total Spend by Workflow",
             labels={"total_cost": "Cost ($)", "workflow": "Workflow"},
         )
-        apply_plotly_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No workflow breakdown available in current data.")
@@ -180,5 +178,4 @@ if "workflow" in df.columns:
             labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")
-    apply_plotly_theme(fig)
     st.plotly_chart(fig, use_container_width=True)

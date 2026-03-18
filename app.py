@@ -21,12 +21,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-style.theme_toggle()
 style.apply()
+style.sidebar_brand()
 
 # --- Sidebar ---
 with st.sidebar:
-    st.markdown("#### Lunar Ventures")
     st.caption("Data refreshes every 5 minutes")
     if st.button("Refresh now", use_container_width=True):
         st.cache_data.clear()

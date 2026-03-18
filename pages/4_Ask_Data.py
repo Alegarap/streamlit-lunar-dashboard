@@ -20,10 +20,9 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import apply_plotly_theme
 
-style.theme_toggle()
 style.apply()
+style.sidebar_brand()
 st.title("Ask Data")
 
 with st.sidebar:
@@ -219,7 +218,6 @@ for msg in st.session_state.messages:
                 else:
                     fig = None
                 if fig:
-                    apply_plotly_theme(fig)
                     st.plotly_chart(fig, use_container_width=True)
             except Exception:
                 pass
@@ -374,7 +372,6 @@ if prompt:
                     else:
                         fig = px.pie(df, names=x, values=y)
                     fig.update_layout(margin=dict(t=10))
-                    apply_plotly_theme(fig)
                     st.plotly_chart(fig, use_container_width=True)
                     # Store chart spec for re-rendering in history
                     msg_data["chart_fig_data"] = {

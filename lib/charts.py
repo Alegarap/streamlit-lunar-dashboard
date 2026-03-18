@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import plotly.graph_objects as go
 import streamlit as st
 
 # Consistent color palette across all pages
@@ -57,25 +56,3 @@ def format_cost(cost: float) -> str:
     if cost >= 1.0:
         return f"${cost:,.2f}"
     return f"${cost:,.4f}"
-
-
-def plotly_theme_layout() -> dict:
-    """Return Plotly layout kwargs matching the current light/dark theme."""
-    if st.session_state.get("_theme_dark_persist", False):
-        return dict(
-            paper_bgcolor="#0F172A",
-            plot_bgcolor="#1E293B",
-            font_color="#E2E8F0",
-            xaxis=dict(gridcolor="#334155"),
-            yaxis=dict(gridcolor="#334155"),
-            legend=dict(font=dict(color="#E2E8F0")),
-        )
-    return {}
-
-
-def apply_plotly_theme(fig: go.Figure) -> go.Figure:
-    """Apply the current theme to a Plotly figure and return it."""
-    layout_kwargs = plotly_theme_layout()
-    if layout_kwargs:
-        fig.update_layout(**layout_kwargs)
-    return fig

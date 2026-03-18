@@ -13,15 +13,9 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 
 SHARED_CSS = """
-/* Sidebar: rename "app" to "Home" */
-[data-testid="stSidebarNav"] li:first-child span {
-    font-size: 0 !important;
-    line-height: 0;
-}
-[data-testid="stSidebarNav"] li:first-child span::after {
-    content: "Home";
-    font-size: 0.875rem;
-    line-height: normal;
+/* Sidebar: hide the raw "app" entry — we add a proper Home link instead */
+[data-testid="stSidebarNav"] li:first-child {
+    display: none;
 }
 
 [data-testid="stMetric"] {
@@ -197,21 +191,28 @@ def apply():
     else:
         st.markdown(LIGHT_CSS, unsafe_allow_html=True)
 
-    # Logo
+    # Logo + Home link
     _sidebar_logo()
+    with st.sidebar:
+        st.page_link("app.py", label="Home", icon="🏠")
 
 
 def _sidebar_logo():
     """Place Lunar Ventures branding above the navigation."""
     svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 56">'
-        '<text x="4" y="40" font-family="system-ui,sans-serif" font-size="34" '
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 64">'
+        '<text x="4" y="46" font-family="system-ui,sans-serif" font-size="40" '
         'font-weight="700" fill="#6366F1">&#127769; Lunar Ventures</text>'
         '</svg>'
     )
     svg_b64 = base64.b64encode(svg.encode()).decode()
     data_uri = f"data:image/svg+xml;base64,{svg_b64}"
     try:
-        st.logo(data_uri)
+        st.logo(data_uri, size="large")
+    except TypeError:
+        try:
+            st.logo(data_uri)
+        except Exception:
+            pass
     except Exception:
         pass

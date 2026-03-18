@@ -80,18 +80,18 @@ DARK_CSS = """
 <style>
 """ + SHARED_CSS + """
 
-/* Lunar gradient on sidebar */
+/* Lunar neon gradient on sidebar */
 [data-testid="stSidebar"],
 [data-testid="stSidebar"] > div:first-child {
-    background: linear-gradient(195deg, #1a0a2e 0%, #16082b 30%, #1c0a30 60%, #220e35 100%) !important;
+    background: linear-gradient(160deg, #2d0a3e 0%, #1a0832 35%, #250d42 65%, #3b1055 100%) !important;
 }
 
-/* Subtle gradient accent line at top of sidebar */
+/* Bold gradient accent line at top of sidebar */
 [data-testid="stSidebar"]::before {
     content: "";
     display: block;
-    height: 3px;
-    background: linear-gradient(90deg, #EC4899, #A855F7, #6366F1);
+    height: 4px;
+    background: linear-gradient(90deg, #F472B6, #D946EF, #A855F7, #7C3AED);
     margin: 0 0 0.5rem 0;
 }
 </style>
@@ -132,16 +132,16 @@ LIGHT_CSS = """
 [data-testid="stExpander"] { background-color: #FFFFFF !important; }
 [data-testid="stExpander"] summary { color: #1E293B !important; }
 
-/* Light sidebar with subtle Lunar gradient */
+/* Light sidebar with Lunar gradient */
 [data-testid="stSidebar"],
 [data-testid="stSidebar"] > div:first-child {
-    background: linear-gradient(195deg, #fdf4ff 0%, #faf5ff 30%, #f5f3ff 60%, #eef2ff 100%) !important;
+    background: linear-gradient(160deg, #fdf2f8 0%, #faf5ff 35%, #f3e8ff 65%, #ede9fe 100%) !important;
 }
 [data-testid="stSidebar"]::before {
     content: "";
     display: block;
-    height: 3px;
-    background: linear-gradient(90deg, #EC4899, #A855F7, #6366F1);
+    height: 4px;
+    background: linear-gradient(90deg, #F472B6, #D946EF, #A855F7, #7C3AED);
     margin: 0 0 0.5rem 0;
 }
 [data-testid="stSidebar"] p,
@@ -229,26 +229,44 @@ def apply():
 
 
 def _sidebar_logo():
-    """Place Lunar Ventures logo above the navigation."""
+    """Place Lunar Ventures logo + 'Lunar Dashboard' text above the navigation."""
     logo_path = Path(__file__).resolve().parent.parent / "static" / "logo.png"
+
+    # Build a composite SVG with the logo image embedded + text
     try:
         if logo_path.exists():
-            st.logo(str(logo_path), size="large")
-        else:
-            # Fallback to text SVG
+            logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
             svg = (
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 64">'
-                '<text x="4" y="46" font-family="system-ui,sans-serif" font-size="40" '
-                'font-weight="700" fill="#A855F7">Lunar Ventures</text>'
+                '<svg xmlns="http://www.w3.org/2000/svg" '
+                'xmlns:xlink="http://www.w3.org/1999/xlink" '
+                'viewBox="0 0 320 48">'
+                f'<image href="data:image/png;base64,{logo_b64}" '
+                'x="0" y="0" width="48" height="48" />'
+                '<text x="56" y="22" font-family="system-ui,sans-serif" '
+                'font-size="17" font-weight="700" fill="#D946EF">'
+                'Lunar</text>'
+                '<text x="56" y="40" font-family="system-ui,sans-serif" '
+                'font-size="17" font-weight="700" fill="#A855F7">'
+                'Dashboard</text>'
                 '</svg>'
             )
-            svg_b64 = base64.b64encode(svg.encode()).decode()
-            st.logo(f"data:image/svg+xml;base64,{svg_b64}", size="large")
-    except TypeError:
-        # Older Streamlit without size param
+        else:
+            svg = (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48">'
+                '<text x="4" y="22" font-family="system-ui,sans-serif" '
+                'font-size="17" font-weight="700" fill="#D946EF">'
+                'Lunar</text>'
+                '<text x="4" y="40" font-family="system-ui,sans-serif" '
+                'font-size="17" font-weight="700" fill="#A855F7">'
+                'Dashboard</text>'
+                '</svg>'
+            )
+
+        svg_b64 = base64.b64encode(svg.encode()).decode()
+        data_uri = f"data:image/svg+xml;base64,{svg_b64}"
         try:
-            st.logo(str(logo_path))
-        except Exception:
-            pass
+            st.logo(data_uri, size="large")
+        except TypeError:
+            st.logo(data_uri)
     except Exception:
         pass

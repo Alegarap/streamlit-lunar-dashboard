@@ -2,6 +2,7 @@
 
 Uses Claude via OpenRouter to translate natural language questions into
 Supabase REST API queries, then renders results as tables/charts.
+Supports conversational follow-ups and natural language responses.
 """
 
 import json
@@ -9,6 +10,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -25,7 +27,7 @@ style.apply()
 st.title("Ask Data")
 
 with st.sidebar:
-    st.caption("Powered by Claude Sonnet via OpenRouter")
+    st.caption("Powered by Claude via OpenRouter")
     if st.button("Clear conversation", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
@@ -45,61 +47,106 @@ if not OPENROUTER_KEY:
     )
     st.stop()
 
-SCHEMA_CONTEXT = """You are a data analyst for Lunar Ventures, a VC fund. You answer questions about their ambient sourcing pipeline by generating Supabase PostgREST queries.
+# Dynamic date context
+today = datetime.now().date()
+yesterday = today - timedelta(days=1)
+week_start = today - timedelta(days=today.weekday())
+month_start = today.replace(day=1)
+
+SYSTEM_PROMPT = f"""You are a helpful data analyst assistant for Lunar Ventures, a VC fund. You have access to their ambient sourcing database and can query it to answer questions.
+
+## Important Context
+- **Today's date**: {today.isoformat()} ({today.strftime('%A')})
+- **Yesterday**: {yesterday.isoformat()}
+- **This week started**: {week_start.isoformat()} (Monday)
+- **This month started**: {month_start.isoformat()}
+- All timestamps are in UTC.
+
+## Your Behavior
+- Be conversational and helpful. Explain what you found, not just dump data.
+- When the user asks a question, decide if you need to query the database or can answer from context.
+- For data questions, generate a query, then explain the results in natural language.
+- For follow-up questions, use conversation context to refine your queries.
+- If the question is ambiguous, ask for clarification instead of guessing.
 
 ## Database Schema
 
 ### items — All investment themes and deals
-Columns: id (UUID PK), type ('theme'/'deal'), title (TEXT), description (TEXT), summary (TEXT), source ('linear'/'hackernews'/'arxiv'/'conference'/'tigerclaw'), source_url (TEXT), linear_identifier (TEXT, e.g. 'THE-2398'), stage ('raw'/'triage'/'curated'/'scored'/'setup'/'live'/'disqualified'), signal_strength ('strong'/'medium'/'weak'), priority (INT 0-4), source_labels (TEXT[]), sector_labels (TEXT[]), cluster_id (UUID FK), created_at (TIMESTAMPTZ), source_date (TIMESTAMPTZ)
+Key columns: id, type ('theme'/'deal'), title, summary, source ('linear'/'hackernews'/'arxiv'/'conference'/'tigerclaw'), source_url, linear_identifier (e.g. 'THE-2398'), stage, signal_strength, cluster_id, created_at, source_date
 
 ### clusters — Groups of similar items
-Columns: id (UUID PK), label (TEXT), summary (TEXT), item_count (INT), source_diversity (INT), hotness_score (FLOAT 0-1), first_seen_at (TIMESTAMPTZ), last_surfaced_at (TIMESTAMPTZ)
+Key columns: id, label, summary, item_count, source_diversity, hotness_score (0-1), first_seen_at, last_surfaced_at
 
 ### eval_samples — Evaluation feedback
-Columns: id (UUID PK), item_id (UUID FK), batch_id (TEXT, e.g. '2026-W11'), source (TEXT), reviewer (TEXT), sample_pool ('hot'/'random'), classification ('signal'/'weak_signal'/'shareable'/'noise'), comment (TEXT), created_at (TIMESTAMPTZ)
+Key columns: batch_id (e.g. '2026-W11'), source, reviewer, sample_pool ('hot'/'random'), classification ('signal'/'weak_signal'/'shareable'/'noise'), comment, created_at
 
 ### cost_log — API cost tracking
-Columns: id (UUID PK), workflow_key (TEXT), model (TEXT), input_tokens (BIGINT), output_tokens (BIGINT), total_cost (DECIMAL), created_at (TIMESTAMPTZ)
+Key columns: workflow_key, model, input_tokens, output_tokens, total_cost (decimal), created_at
 
-## Available RPCs
-- get_ingestion_stats(p_days INT) → rows with: day, source, type, item_count
-- get_hot_clusters(min_score FLOAT, lim INT) → cluster rows
-- get_cost_stats(p_days INT) → rows with: day, workflow_key, model, request_count, total_input_tokens, total_output_tokens, total_cost
+## Available RPCs (preferred for aggregated data)
+- `get_ingestion_stats(p_days)` → day, source, type, item_count — USE THIS for ingestion questions. p_days=1 means today only, p_days=3 means last 3 days, etc.
+- `get_hot_clusters(min_score, lim)` → cluster rows sorted by hotness
+- `get_cost_stats(p_days)` → day, workflow_key, model, request_count, total_input_tokens, total_output_tokens, total_cost — USE THIS for cost questions
 
-## PostgREST Query Syntax (use these in params)
-- Filtering: "column": "eq.value", "column": "gt.5", "column": "ilike.*keyword*", "column": "in.(a,b,c)"
-- Selecting: "select": "col1,col2,col3"
-- Ordering: "order": "column.desc"
-- Limiting: "limit": "10"
-- Date filtering: "created_at": "gte.2026-03-10T00:00:00"
+## PostgREST Query Syntax
+- Filtering: "column": "eq.value", "gt.5", "gte.2026-03-15T00:00:00", "ilike.*keyword*", "in.(a,b,c)"
+- Select/order/limit: "select": "col1,col2", "order": "col.desc", "limit": "20"
 - Not null: "column": "not.is.null"
-- Count: include "select": "id" with limit for approximate count
 
 ## Response Format
-Return ONLY a JSON object (no markdown, no explanation outside JSON):
-{
-  "query_type": "rest" or "rpc",
-  "table": "table_name",  // for rest
-  "function": "fn_name",  // for rpc
-  "params": {},            // PostgREST params or RPC params
-  "explanation": "What this query does",
+You MUST respond with a JSON object. The JSON can include a natural language message AND optionally a query:
+
+For questions that need data:
+```json
+{{
+  "message": "Your conversational response explaining what you're looking up and what you found",
+  "query": {{
+    "type": "rest" or "rpc",
+    "table": "items",
+    "function": "get_ingestion_stats",
+    "params": {{}},
+  }},
   "display": "table" | "bar_chart" | "line_chart" | "pie_chart" | "metric",
-  "chart_config": {"x": "col", "y": "col", "color": "col"}  // optional
-}
+  "chart_config": {{"x": "col", "y": "col", "color": "col"}}
+}}
+```
+
+For conversational responses (no data needed):
+```json
+{{
+  "message": "Your response text here"
+}}
+```
+
+## Critical Rules for Date Queries
+- "today" = created_at >= {today.isoformat()}T00:00:00 (or use RPC with p_days=1)
+- "yesterday" = created_at >= {yesterday.isoformat()}T00:00:00 AND created_at < {today.isoformat()}T00:00:00
+- "last 3 days" = use RPC with p_days=3, OR created_at >= {(today - timedelta(days=3)).isoformat()}T00:00:00
+- "this week" = created_at >= {week_start.isoformat()}T00:00:00 (or use RPC with p_days={(today - week_start).days + 1})
+- "this month" = created_at >= {month_start.isoformat()}T00:00:00
+- ALWAYS use exact ISO dates, never relative expressions the database can't understand.
 
 ## Examples
 
-Q: "What's hot right now?"
-{"query_type": "rpc", "function": "get_hot_clusters", "params": {"min_score": 0.3, "lim": 10}, "explanation": "Top 10 clusters with hotness score above 0.3", "display": "table"}
+User: "What's hot right now?"
+```json
+{{"message": "Here are the hottest clusters in your pipeline right now, ranked by hotness score:", "query": {{"type": "rpc", "function": "get_hot_clusters", "params": {{"min_score": 0.3, "lim": 10}}}}, "display": "table"}}
+```
 
-Q: "How many items from arxiv this month?"
-{"query_type": "rest", "table": "items", "params": {"select": "id", "source": "eq.arxiv", "created_at": "gte.2026-03-01T00:00:00", "limit": "1000"}, "explanation": "Count of arxiv items created this month", "display": "metric"}
+User: "How many items came in today?"
+```json
+{{"message": "Let me check today's ingestion ({today.isoformat()}):", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 1}}}}, "display": "bar_chart", "chart_config": {{"x": "source", "y": "item_count", "color": "type"}}}}
+```
 
-Q: "Cost this week"
-{"query_type": "rpc", "function": "get_cost_stats", "params": {"p_days": 7}, "explanation": "Cost breakdown for the last 7 days", "display": "bar_chart", "chart_config": {"x": "workflow_key", "y": "total_cost"}}
+User: "Show me cost for the last 3 days"
+```json
+{{"message": "Here's the cost breakdown for the last 3 days:", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": 3}}}}, "display": "bar_chart", "chart_config": {{"x": "day", "y": "total_cost", "color": "workflow_key"}}}}
+```
 
-Q: "Top sources today"
-{"query_type": "rpc", "function": "get_ingestion_stats", "params": {"p_days": 1}, "explanation": "Today's ingestion by source", "display": "bar_chart", "chart_config": {"x": "source", "y": "item_count"}}
+User: "Thanks!"
+```json
+{{"message": "You're welcome! Let me know if you have any other questions about the data."}}
+```
 """
 
 # --- Quick queries ---
@@ -107,9 +154,9 @@ st.markdown("**Quick queries:**")
 quick_cols = st.columns(4)
 quick_queries = [
     "What's hot right now?",
-    "Ingestion stats this week",
-    "Top sources today",
-    "Clusters with multiple sources",
+    "Show ingestion for the last 3 days",
+    "Cost breakdown this week",
+    "Multi-source clusters",
 ]
 for col, q in zip(quick_cols, quick_queries):
     if col.button(q, use_container_width=True, key=f"quick_{q}"):
@@ -125,11 +172,12 @@ if "messages" not in st.session_state:
 if not st.session_state.messages:
     st.markdown(
         '<p style="color: #94a3b8; text-align: center; margin: 3rem 0;">'
-        'Ask questions in natural language. Examples:<br>'
-        '"How many themes were added this week?" · '
-        '"Show cost breakdown by model" · '
-        '"Which clusters have items from multiple sources?"'
-        '</p>',
+        "Ask questions in natural language. I know today's date and can "
+        "filter precisely.<br>"
+        '"How many themes came in today?" · '
+        '"Show cost for the last 3 days" · '
+        '"Which clusters have the highest hotness?"'
+        "</p>",
         unsafe_allow_html=True,
     )
 
@@ -143,6 +191,24 @@ for msg in st.session_state.messages:
                 use_container_width=True,
                 hide_index=True,
             )
+        if msg.get("chart_fig_data") is not None:
+            # Re-render chart from stored spec
+            try:
+                spec = msg["chart_fig_data"]
+                cdf = pd.DataFrame(spec["data"])
+                if spec["type"] == "bar":
+                    fig = px.bar(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
+                elif spec["type"] == "line":
+                    fig = px.line(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
+                elif spec["type"] == "pie":
+                    fig = px.pie(cdf, names=spec["x"], values=spec["y"])
+                else:
+                    fig = None
+                if fig:
+                    apply_plotly_theme(fig)
+                    st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
 
 prompt = st.chat_input("Ask a question about your data...") or st.session_state.pop("ask_input", None)
 
@@ -153,22 +219,27 @@ if prompt:
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            # Build conversation history (last 6 messages for context)
+            # Build conversation history (last 8 messages for context)
             history = []
-            for msg in st.session_state.messages[-6:]:
+            for msg in st.session_state.messages[-8:]:
                 if msg["role"] == "user":
                     history.append({"role": "user", "content": msg["content"]})
                 elif msg.get("content") and msg["role"] == "assistant":
-                    history.append({"role": "assistant", "content": msg["content"]})
+                    # Include data summary in history for follow-ups
+                    assistant_text = msg["content"]
+                    if msg.get("dataframe"):
+                        df_summary = pd.DataFrame(msg["dataframe"])
+                        assistant_text += f"\n[Data: {len(df_summary)} rows, columns: {list(df_summary.columns)}]"
+                    history.append({"role": "assistant", "content": assistant_text})
 
             body = json.dumps({
                 "model": "anthropic/claude-sonnet-4",
                 "messages": [
-                    {"role": "system", "content": SCHEMA_CONTEXT},
+                    {"role": "system", "content": SYSTEM_PROMPT},
                     *history,
                 ],
-                "temperature": 0,
-                "max_tokens": 1024,
+                "temperature": 0.1,
+                "max_tokens": 2048,
             }).encode()
             req = urllib.request.Request(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -178,27 +249,28 @@ if prompt:
                     "Content-Type": "application/json",
                 },
             )
-            query_spec = None
+            response_spec = None
+            raw_content = ""
             try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                with urllib.request.urlopen(req, timeout=45) as resp:
                     ai_response = json.loads(resp.read())
-                content = ai_response["choices"][0]["message"]["content"]
+                raw_content = ai_response["choices"][0]["message"]["content"]
 
                 # Parse JSON from response (handle markdown code blocks)
-                if "```" in content:
-                    # Extract first code block
-                    parts = content.split("```")
-                    code_block = parts[1] if len(parts) > 1 else content
+                json_str = raw_content
+                if "```" in json_str:
+                    parts = json_str.split("```")
+                    code_block = parts[1] if len(parts) > 1 else json_str
                     if code_block.startswith("json"):
                         code_block = code_block[4:]
-                    content = code_block
-                query_spec = json.loads(content.strip())
+                    json_str = code_block
+                response_spec = json.loads(json_str.strip())
             except json.JSONDecodeError:
-                # AI returned non-JSON — show it as text
-                st.markdown(content if content else "Could not parse response.")
+                # AI returned non-JSON — show as conversational text
+                st.markdown(raw_content)
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": content or "Could not parse response.",
+                    "content": raw_content,
                 })
             except Exception as e:
                 st.error(f"AI query failed: {e}")
@@ -207,65 +279,65 @@ if prompt:
                     "content": f"Error: {e}",
                 })
 
-        if query_spec is None:
+        if response_spec is None:
             st.stop()
 
-        # Execute the query
-        explanation = query_spec.get("explanation", "")
-        st.caption(explanation)
+        # Show the conversational message
+        message = response_spec.get("message", "")
+        if message:
+            st.markdown(message)
+
+        # Execute query if present
+        query = response_spec.get("query")
+        if not query:
+            # Pure conversational response, no data
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": message,
+            })
+            st.stop()
 
         data = None
         try:
-            if query_spec["query_type"] == "rpc":
+            if query.get("type") == "rpc":
                 data = sb.rpc_call(
-                    query_spec["function"],
-                    query_spec.get("params", {}),
+                    query["function"],
+                    query.get("params", {}),
                 )
             else:
                 data = sb.query_table(
-                    query_spec["table"],
-                    query_spec.get("params", {}),
+                    query["table"],
+                    query.get("params", {}),
                 )
         except Exception as e:
             st.error(f"Query failed: {e}")
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": f"Query error: {e}",
+                "content": f"{message}\n\nQuery error: {e}",
             })
+            st.stop()
 
         if not data:
-            if data is None:
-                pass  # Query errored — already handled
-            else:
-                st.info("No results found.")
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": "No results found.",
-                })
+            st.info("No results found for this query.")
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": f"{message}\n\nNo results found.",
+            })
             st.stop()
 
         df = pd.DataFrame(data)
-        display = query_spec.get("display", "table")
-        chart_config = query_spec.get("chart_config", {})
+        display = response_spec.get("display", "table")
+        chart_config = response_spec.get("chart_config", {})
         msg_data = {
             "role": "assistant",
-            "content": explanation,
+            "content": message,
             "dataframe": df.to_dict(orient="records"),
         }
 
-        if display == "metric":
-            if len(df) == 1 and len(df.columns) <= 4:
-                cols = st.columns(len(df.columns))
-                for col, c in zip(cols, df.columns):
-                    col.metric(c, df[c].iloc[0])
-            else:
-                # Metric display for counts — show total rows
-                st.metric("Results", f"{len(df):,} rows")
-                st.dataframe(df, use_container_width=True, hide_index=True)
-
-        elif display in ("bar_chart", "line_chart", "pie_chart"):
+        # Render charts
+        if display in ("bar_chart", "line_chart", "pie_chart"):
             x = chart_config.get("x", df.columns[0] if len(df.columns) > 0 else None)
-            y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else df.columns[0] if df.columns.any() else None)
+            y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else df.columns[0] if len(df.columns) > 0 else None)
             color = chart_config.get("color")
 
             # Validate columns
@@ -276,26 +348,34 @@ if prompt:
             if color and color not in df.columns:
                 color = None
 
-            chart_rendered = False
             if x and y:
                 try:
-                    if display == "bar_chart":
+                    chart_type_map = {"bar_chart": "bar", "line_chart": "line", "pie_chart": "pie"}
+                    ct = chart_type_map.get(display, "bar")
+                    if ct == "bar":
                         fig = px.bar(df, x=x, y=y, color=color)
-                    elif display == "line_chart":
+                    elif ct == "line":
                         fig = px.line(df, x=x, y=y, color=color)
                     else:
                         fig = px.pie(df, names=x, values=y)
                     fig.update_layout(margin=dict(t=10))
                     apply_plotly_theme(fig)
                     st.plotly_chart(fig, use_container_width=True)
-                    chart_rendered = True
+                    # Store chart spec for re-rendering in history
+                    msg_data["chart_fig_data"] = {
+                        "type": ct,
+                        "data": df.to_dict(orient="records"),
+                        "x": x, "y": y, "color": color,
+                    }
                 except Exception:
                     pass
 
-            # Always show data table below chart
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
+        if display == "metric" and len(df) == 1 and len(df.columns) <= 4:
+            cols = st.columns(len(df.columns))
+            for col, c in zip(cols, df.columns):
+                col.metric(c, df[c].iloc[0])
         else:
+            # Always show data table
             st.dataframe(df, use_container_width=True, hide_index=True)
 
         st.session_state.messages.append(msg_data)

@@ -247,7 +247,7 @@ if prompt:
                     history.append({"role": "assistant", "content": assistant_text})
 
             body = json.dumps({
-                "model": "anthropic/claude-sonnet-4",
+                "model": "anthropic/claude-sonnet-4-6",
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     *history,

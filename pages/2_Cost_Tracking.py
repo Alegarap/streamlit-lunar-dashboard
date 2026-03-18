@@ -19,7 +19,6 @@ from lib import style
 from lib.charts import format_cost, metric_row, workflow_display_name
 
 style.apply()
-style.sidebar_brand()
 st.title("Cost Tracking")
 
 with st.sidebar:

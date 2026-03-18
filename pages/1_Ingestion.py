@@ -19,7 +19,6 @@ from lib import style
 from lib.charts import COLORS, SOURCE_ORDER, metric_row
 
 style.apply()
-style.sidebar_brand()
 st.title("Ingestion Dashboard")
 
 with st.sidebar:

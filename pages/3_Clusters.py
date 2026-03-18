@@ -15,7 +15,6 @@ from lib import style
 from lib.charts import COLORS, metric_row
 
 style.apply()
-style.sidebar_brand()
 st.title("Clusters & What's Hot")
 
 with st.sidebar:

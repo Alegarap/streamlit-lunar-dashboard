@@ -22,7 +22,6 @@ from lib import supabase_client as sb
 from lib import style
 
 style.apply()
-style.sidebar_brand()
 st.title("Ask Data")
 
 with st.sidebar:

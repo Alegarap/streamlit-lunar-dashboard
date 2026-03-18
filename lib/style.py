@@ -1,10 +1,11 @@
-"""Custom CSS polish + dark/light theme toggle.
+"""Custom CSS polish + dark/light theme toggle + Lunar Ventures branding.
 
 Native config.toml is set to dark. Toggle switches to light via CSS override.
 Dark mode has zero flash. Light mode may briefly show dark on page switch.
 """
 
 import base64
+from pathlib import Path
 
 import streamlit as st
 
@@ -61,21 +62,40 @@ hr {
     border-radius: 8px;
 }
 [data-testid="stPageLink"] {
-    border: 1px solid rgba(128, 128, 128, 0.2);
+    border: 1px solid rgba(128, 128, 128, 0.15);
     border-radius: 10px;
     padding: 4px 8px;
     transition: all 0.15s ease;
 }
 [data-testid="stPageLink"]:hover {
-    border-color: #6366F1;
+    border-color: #A855F7;
 }
 """
 
 # ---------------------------------------------------------------------------
-# Dark theme — minimal polish, native config handles backgrounds
+# Dark theme — Lunar gradient sidebar
 # ---------------------------------------------------------------------------
 
-DARK_CSS = "<style>" + SHARED_CSS + "</style>"
+DARK_CSS = """
+<style>
+""" + SHARED_CSS + """
+
+/* Lunar gradient on sidebar */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] > div:first-child {
+    background: linear-gradient(195deg, #1a0a2e 0%, #16082b 30%, #1c0a30 60%, #220e35 100%) !important;
+}
+
+/* Subtle gradient accent line at top of sidebar */
+[data-testid="stSidebar"]::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, #EC4899, #A855F7, #6366F1);
+    margin: 0 0 0.5rem 0;
+}
+</style>
+"""
 
 # ---------------------------------------------------------------------------
 # Light theme — full override from native dark back to light
@@ -112,9 +132,17 @@ LIGHT_CSS = """
 [data-testid="stExpander"] { background-color: #FFFFFF !important; }
 [data-testid="stExpander"] summary { color: #1E293B !important; }
 
+/* Light sidebar with subtle Lunar gradient */
 [data-testid="stSidebar"],
-[data-testid="stSidebar"] > div {
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+[data-testid="stSidebar"] > div:first-child {
+    background: linear-gradient(195deg, #fdf4ff 0%, #faf5ff 30%, #f5f3ff 60%, #eef2ff 100%) !important;
+}
+[data-testid="stSidebar"]::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, #EC4899, #A855F7, #6366F1);
+    margin: 0 0 0.5rem 0;
 }
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] span,
@@ -122,8 +150,6 @@ LIGHT_CSS = """
 [data-testid="stSidebar"] div {
     color: #1E293B !important;
 }
-[data-testid="stSidebarNav"] a { color: #334155 !important; }
-[data-testid="stSidebarNav"] a:hover { background-color: #e2e8f0 !important; }
 
 [data-testid="stTabs"] button { color: #64748b !important; }
 [data-testid="stTabs"] button[aria-selected="true"] { color: #1E293B !important; }
@@ -137,7 +163,7 @@ hr { border-color: #e2e8f0 !important; }
 }
 [data-testid="stButton"] button:hover {
     background-color: #f8fafc !important;
-    border-color: #6366F1 !important;
+    border-color: #A855F7 !important;
 }
 
 [data-testid="stChatMessage"] {
@@ -203,20 +229,25 @@ def apply():
 
 
 def _sidebar_logo():
-    """Place Lunar Ventures branding above the navigation."""
-    svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 64">'
-        '<text x="4" y="46" font-family="system-ui,sans-serif" font-size="40" '
-        'font-weight="700" fill="#6366F1">&#127769; Lunar Ventures</text>'
-        '</svg>'
-    )
-    svg_b64 = base64.b64encode(svg.encode()).decode()
-    data_uri = f"data:image/svg+xml;base64,{svg_b64}"
+    """Place Lunar Ventures logo above the navigation."""
+    logo_path = Path(__file__).resolve().parent.parent / "static" / "logo.png"
     try:
-        st.logo(data_uri, size="large")
+        if logo_path.exists():
+            st.logo(str(logo_path), size="large")
+        else:
+            # Fallback to text SVG
+            svg = (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 64">'
+                '<text x="4" y="46" font-family="system-ui,sans-serif" font-size="40" '
+                'font-weight="700" fill="#A855F7">Lunar Ventures</text>'
+                '</svg>'
+            )
+            svg_b64 = base64.b64encode(svg.encode()).decode()
+            st.logo(f"data:image/svg+xml;base64,{svg_b64}", size="large")
     except TypeError:
+        # Older Streamlit without size param
         try:
-            st.logo(data_uri)
+            st.logo(str(logo_path))
         except Exception:
             pass
     except Exception:

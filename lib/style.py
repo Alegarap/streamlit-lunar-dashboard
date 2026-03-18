@@ -243,10 +243,10 @@ def _sidebar_logo():
                 f'<image href="data:image/png;base64,{logo_b64}" '
                 'x="0" y="0" width="48" height="48" />'
                 '<text x="56" y="22" font-family="system-ui,sans-serif" '
-                'font-size="17" font-weight="700" fill="#D946EF">'
+                'font-size="21" font-weight="700" fill="#D946EF">'
                 'Lunar</text>'
-                '<text x="56" y="40" font-family="system-ui,sans-serif" '
-                'font-size="17" font-weight="700" fill="#A855F7">'
+                '<text x="56" y="42" font-family="system-ui,sans-serif" '
+                'font-size="21" font-weight="700" fill="#A855F7">'
                 'Dashboard</text>'
                 '</svg>'
             )
@@ -254,10 +254,10 @@ def _sidebar_logo():
             svg = (
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48">'
                 '<text x="4" y="22" font-family="system-ui,sans-serif" '
-                'font-size="17" font-weight="700" fill="#D946EF">'
+                'font-size="21" font-weight="700" fill="#D946EF">'
                 'Lunar</text>'
-                '<text x="4" y="40" font-family="system-ui,sans-serif" '
-                'font-size="17" font-weight="700" fill="#A855F7">'
+                '<text x="4" y="42" font-family="system-ui,sans-serif" '
+                'font-size="21" font-weight="700" fill="#A855F7">'
                 'Dashboard</text>'
                 '</svg>'
             )

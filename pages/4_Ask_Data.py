@@ -83,12 +83,20 @@ Key columns: batch_id (e.g. '2026-W11'), source, reviewer, sample_pool ('hot'/'r
 ### cost_log — API cost tracking
 Key columns: workflow_key, model, input_tokens, output_tokens, total_cost (decimal), created_at
 
-## Available RPCs (preferred for aggregated data)
-- `get_ingestion_stats(p_days)` → day, source, type, item_count — USE THIS for ingestion questions. p_days=1 means today only, p_days=3 means last 3 days, etc.
-- `get_hot_clusters(min_score, lim)` → cluster rows sorted by hotness
-- `get_cost_stats(p_days)` → day, workflow_key, model, request_count, total_input_tokens, total_output_tokens, total_cost — USE THIS for cost questions
+## Available RPCs — ALWAYS USE THESE for time-based questions
+The RPCs use `WHERE created_at >= (CURRENT_DATE - p_days)`. This means:
+- p_days=0 → today only
+- p_days=1 → yesterday + today (2 days)
+- p_days=2 → 3 days of data
+- p_days=6 → 7 days (this week if today is Sunday)
 
-## PostgREST Query Syntax
+**RPCs:**
+- `get_ingestion_stats(p_days)` → day, source, type, item_count — for ingestion/items questions
+- `get_hot_clusters(min_score, lim)` → cluster rows sorted by hotness
+- `get_cost_stats(p_days)` → day, workflow_key, model, request_count, total_input_tokens, total_output_tokens, total_cost — for cost questions
+
+## PostgREST REST queries — only for non-time-based questions
+Use REST queries ONLY when you need to search by keyword, filter by source, or list specific items. NEVER use REST for "today/this week/last N days" — use the RPCs above instead.
 - Filtering: "column": "eq.value", "gt.5", "gte.2026-03-15T00:00:00", "ilike.*keyword*", "in.(a,b,c)"
 - Select/order/limit: "select": "col1,col2", "order": "col.desc", "limit": "20"
 - Not null: "column": "not.is.null"
@@ -118,13 +126,19 @@ For conversational responses (no data needed):
 }}
 ```
 
-## Critical Rules for Date Queries
-- "today" = created_at >= {today.isoformat()}T00:00:00 (or use RPC with p_days=1)
-- "yesterday" = created_at >= {yesterday.isoformat()}T00:00:00 AND created_at < {today.isoformat()}T00:00:00
-- "last 3 days" = use RPC with p_days=3, OR created_at >= {(today - timedelta(days=3)).isoformat()}T00:00:00
-- "this week" = created_at >= {week_start.isoformat()}T00:00:00 (or use RPC with p_days={(today - week_start).days + 1})
-- "this month" = created_at >= {month_start.isoformat()}T00:00:00
-- ALWAYS use exact ISO dates, never relative expressions the database can't understand.
+## Critical Rules for Date Queries — READ CAREFULLY
+The p_days parameter means "go back N days from today". p_days=0 means today only.
+
+| User says | Correct p_days | Dates returned |
+|-----------|---------------|----------------|
+| "today" | p_days=0 | {today.isoformat()} only |
+| "yesterday" | DO NOT USE RPC. Use REST with created_at gte/lt | {yesterday.isoformat()} only |
+| "last 3 days" | p_days=2 | {(today - timedelta(days=2)).isoformat()} to {today.isoformat()} (3 days) |
+| "last 7 days" / "this week" | p_days=6 | 7 days of data |
+| "this week (Mon-today)" | p_days={(today - week_start).days} | {week_start.isoformat()} to {today.isoformat()} |
+| "this month" | p_days={(today - month_start).days} | {month_start.isoformat()} to {today.isoformat()} |
+
+NEVER guess p_days. Calculate it from the table above. ALWAYS use RPCs for time-based aggregation questions — never REST queries with date filters.
 
 ## Examples
 
@@ -135,12 +149,12 @@ User: "What's hot right now?"
 
 User: "How many items came in today?"
 ```json
-{{"message": "Let me check today's ingestion ({today.isoformat()}):", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 1}}}}, "display": "bar_chart", "chart_config": {{"x": "source", "y": "item_count", "color": "type"}}}}
+{{"message": "Let me check today's ingestion ({today.isoformat()}):", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 0}}}}, "display": "bar_chart", "chart_config": {{"x": "source", "y": "item_count", "color": "type"}}}}
 ```
 
 User: "Show me cost for the last 3 days"
 ```json
-{{"message": "Here's the cost breakdown for the last 3 days:", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": 3}}}}, "display": "bar_chart", "chart_config": {{"x": "day", "y": "total_cost", "color": "workflow_key"}}}}
+{{"message": "Here's the cost breakdown for the last 3 days ({(today - timedelta(days=2)).isoformat()} to {today.isoformat()}):", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": 2}}}}, "display": "bar_chart", "chart_config": {{"x": "day", "y": "total_cost", "color": "workflow_key"}}}}
 ```
 
 User: "Thanks!"

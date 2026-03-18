@@ -13,9 +13,9 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 
 SHARED_CSS = """
-/* Sidebar: hide the raw "app" entry — we add a proper Home link instead */
-[data-testid="stSidebarNav"] li:first-child {
-    display: none;
+/* Sidebar: hide auto-generated nav — replaced by custom page links */
+[data-testid="stSidebarNav"] {
+    display: none !important;
 }
 
 [data-testid="stMetric"] {
@@ -191,10 +191,15 @@ def apply():
     else:
         st.markdown(LIGHT_CSS, unsafe_allow_html=True)
 
-    # Logo + Home link
+    # Logo + navigation
     _sidebar_logo()
     with st.sidebar:
         st.page_link("app.py", label="Home", icon="🏠")
+        st.page_link("pages/4_Ask_Data.py", label="Ask Data", icon="🤖")
+        st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")
+        st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
+        st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
+        st.divider()
 
 
 def _sidebar_logo():

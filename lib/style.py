@@ -1,7 +1,6 @@
 """Custom CSS polish that works with both Streamlit's native light and dark themes.
 
-Theme switching is handled by Streamlit's built-in Settings menu
-(hamburger → Settings → Theme). No custom toggle needed — no flash.
+Theme switching: use Streamlit's built-in menu (⋮ → Settings → Theme).
 """
 
 import streamlit as st
@@ -13,7 +12,7 @@ CUSTOM_CSS = """
     display: none;
 }
 
-/* Metric card styling — uses transparent overlays that work in both themes */
+/* Metric card styling — transparent overlays work in both themes */
 [data-testid="stMetric"] {
     border: 1px solid rgba(128, 128, 128, 0.2);
     border-radius: 12px;
@@ -38,7 +37,7 @@ CUSTOM_CSS = """
     font-size: 0.75rem !important;
 }
 
-/* Cleaner expanders */
+/* Expanders */
 [data-testid="stExpander"] {
     border: 1px solid rgba(128, 128, 128, 0.2) !important;
     border-radius: 8px !important;
@@ -82,27 +81,6 @@ hr {
 [data-testid="stPageLink"]:hover {
     border-color: #6366F1;
 }
-
-/* Branding logo area */
-.sidebar-brand {
-    padding: 0.5rem 0 1rem 0;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-    margin-bottom: 0.75rem;
-}
-.sidebar-brand h3 {
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 1.1rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.02em;
-}
-.sidebar-brand p {
-    margin: 0 !important;
-    font-size: 0.7rem !important;
-    opacity: 0.5;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
 </style>
 """
 
@@ -113,12 +91,21 @@ def apply():
 
 
 def sidebar_brand():
-    """Render the Lunar Ventures branding in the sidebar."""
-    with st.sidebar:
-        st.markdown(
-            '<div class="sidebar-brand">'
-            '<h3>🌙 Lunar Ventures</h3>'
-            '<p>BI Dashboard</p>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+    """Render the Lunar Ventures logo at the top of the sidebar using st.logo()."""
+    # st.logo() places the image above the navigation — the only way to
+    # get content above the auto-generated page links.
+    # Using a data URI SVG so no external file is needed.
+    import base64
+
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40">
+      <text x="28" y="26" font-family="sans-serif" font-size="18" font-weight="600" fill="#6366F1">🌙 Lunar Ventures</text>
+    </svg>"""
+    svg_b64 = base64.b64encode(svg.encode()).decode()
+    data_uri = f"data:image/svg+xml;base64,{svg_b64}"
+
+    try:
+        st.logo(data_uri)
+    except Exception:
+        # st.logo() not available in older Streamlit — fall back to sidebar markdown
+        with st.sidebar:
+            st.markdown("**🌙 Lunar Ventures**")

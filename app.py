@@ -30,6 +30,7 @@ with st.sidebar:
     if st.button("Refresh now", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+    st.caption("Theme: ⋮ menu → Settings")
 
 st.title("Lunar Ventures — BI Dashboard")
 

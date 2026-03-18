@@ -165,24 +165,28 @@ with tab_monthly:
 # --- Latest items table ---
 st.divider()
 st.subheader("Latest Items")
-latest = sb.query_table("items", {
-    "select": "created_at,source,type,title,source_url",
-    "order": "created_at.desc",
-    "limit": "100",
-})
-if latest:
-    df_latest = pd.DataFrame(latest)
-    df_latest["created_at"] = pd.to_datetime(df_latest["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
-    st.dataframe(
-        df_latest.rename(columns={
-            "created_at": "Created",
-            "source": "Source",
-            "type": "Type",
-            "title": "Title",
-            "source_url": "URL",
-        }),
-        use_container_width=True,
-        hide_index=True,
-    )
-else:
-    st.info("No items found.")
+try:
+    latest = sb.query_table("items", {
+        "select": "created_at,source,type,title",
+        "order": "created_at.desc",
+        "limit": "100",
+    })
+    if latest:
+        df_latest = pd.DataFrame(latest)
+        df_latest["created_at"] = pd.to_datetime(
+            df_latest["created_at"], errors="coerce"
+        ).dt.strftime("%Y-%m-%d %H:%M")
+        st.dataframe(
+            df_latest.rename(columns={
+                "created_at": "Created",
+                "source": "Source",
+                "type": "Type",
+                "title": "Title",
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("No items found.")
+except Exception as e:
+    st.error(f"Failed to load latest items: {e}")

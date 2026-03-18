@@ -68,6 +68,17 @@ def rpc_call(fn_name: str, params: dict | None = None) -> list | dict | None:
     return rpc(fn_name, json.dumps(params or {}, sort_keys=True))
 
 
+def rpc_fresh(fn_name: str, params: dict | None = None) -> list | dict | None:
+    """Uncached RPC call — always hits the database. Use for Ask Data queries."""
+    url, _ = _get_credentials()
+    endpoint = f"{url}/rest/v1/rpc/{fn_name}"
+    data = json.dumps(params or {}).encode()
+    req = urllib.request.Request(endpoint, data=data, headers=_headers(), method="POST")
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        body = resp.read()
+        return json.loads(body) if body else None
+
+
 @st.cache_data(ttl=300)
 def query(table: str, _params_json: str = "{}") -> list:
     """Query a Supabase table via REST API.
@@ -88,6 +99,17 @@ def query(table: str, _params_json: str = "{}") -> list:
 def query_table(table: str, params: dict | None = None) -> list:
     """Convenience wrapper: accepts a dict, serialises for caching."""
     return query(table, json.dumps(params or {}, sort_keys=True))
+
+
+def query_fresh(table: str, params: dict | None = None) -> list:
+    """Uncached table query — always hits the database. Use for Ask Data queries."""
+    url, _ = _get_credentials()
+    endpoint = f"{url}/rest/v1/{table}"
+    if params:
+        endpoint += "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(endpoint, headers=_headers())
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.loads(resp.read())
 
 
 def count_rows(table: str, filters: dict | None = None) -> int:

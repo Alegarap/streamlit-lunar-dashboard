@@ -313,13 +313,14 @@ if prompt:
 
         data = None
         try:
+            # Use uncached queries so Ask Data always shows fresh data
             if query.get("type") == "rpc":
-                data = sb.rpc_call(
+                data = sb.rpc_fresh(
                     query["function"],
                     query.get("params", {}),
                 )
             else:
-                data = sb.query_table(
+                data = sb.query_fresh(
                     query["table"],
                     query.get("params", {}),
                 )

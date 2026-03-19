@@ -12,7 +12,11 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from streamlit_extras.dataframe_explorer import dataframe_explorer
+
+try:
+    from streamlit_extras.dataframe_explorer import dataframe_explorer
+except ImportError:
+    dataframe_explorer = None
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
@@ -182,8 +186,11 @@ try:
             "type": "Type",
             "title": "Title",
         })
-        filtered = dataframe_explorer(df_latest, case=False)
-        st.dataframe(filtered, use_container_width=True, hide_index=True)
+        if dataframe_explorer is not None:
+            filtered = dataframe_explorer(df_latest, case=False)
+            st.dataframe(filtered, use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(df_latest, use_container_width=True, hide_index=True)
     else:
         st.info("No items found.")
 except Exception as e:

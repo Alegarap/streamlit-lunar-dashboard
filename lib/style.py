@@ -94,16 +94,21 @@ DARK_CSS = """
 
 /* Lunar neon gradient on sidebar */
 [data-testid="stSidebar"],
-[data-testid="stSidebar"] > div:first-child {
+[data-testid="stSidebar"] > div,
+[data-testid="stSidebar"] > div > div,
+[data-testid="stSidebar"] section,
+[data-testid="stSidebar"] section > div {
     background: linear-gradient(160deg, #2d0a3e 0%, #200938 30%, #2a0d45 60%, #1a0832 100%) !important;
-    border-right: 2px solid rgba(169, 85, 247, 0.15) !important;
 }
 
-/* Make sidebar content stretch so spacer pushes user info to bottom */
+/* Reduce sidebar top padding */
 [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100% !important;
+    padding-top: 1rem !important;
+}
+
+/* Reduce spacing between sidebar elements */
+[data-testid="stSidebar"] .stPageLink {
+    margin-bottom: 0 !important;
 }
 </style>
 """
@@ -303,9 +308,9 @@ def apply():
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
 
-        # Push user info to bottom with spacer
+        # Spacer before user info
         st.markdown(
-            '<div style="flex-grow:1; min-height:200px;"></div>',
+            '<div style="min-height:80px;"></div>',
             unsafe_allow_html=True,
         )
 
@@ -327,16 +332,26 @@ def _sidebar_logo():
     with st.sidebar:
         try:
             if logo_path.exists():
-                st.image(str(logo_path), width=60)
-            st.markdown(
-                '<p style="font-size:22px !important; font-weight:700 !important; '
-                'color:#D946EF !important; margin:0 !important; padding:0 !important; '
-                'line-height:1.2 !important;">Lunar</p>'
-                '<p style="font-size:22px !important; font-weight:700 !important; '
-                'color:#A855F7 !important; margin:0 0 12px 0 !important; padding:0 !important; '
-                'line-height:1.2 !important;">Dashboard</p>',
-                unsafe_allow_html=True,
-            )
-            st.divider()
+                logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
+                st.markdown(
+                    f'<div style="display:flex !important; align-items:center !important; '
+                    f'gap:12px !important; margin-bottom:8px !important;">'
+                    f'<img src="data:image/png;base64,{logo_b64}" '
+                    f'style="width:44px !important; height:44px !important; border-radius:10px !important;" />'
+                    f'<span style="font-size:20px !important; font-weight:700 !important; '
+                    f'background:linear-gradient(135deg, #D946EF, #A855F7) !important; '
+                    f'-webkit-background-clip:text !important; -webkit-text-fill-color:transparent !important; '
+                    f'background-clip:text !important;">Lunar Dashboard</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<span style="font-size:20px !important; font-weight:700 !important; '
+                    'background:linear-gradient(135deg, #D946EF, #A855F7) !important; '
+                    '-webkit-background-clip:text !important; -webkit-text-fill-color:transparent !important; '
+                    'background-clip:text !important;">Lunar Dashboard</span>',
+                    unsafe_allow_html=True,
+                )
         except Exception:
             pass

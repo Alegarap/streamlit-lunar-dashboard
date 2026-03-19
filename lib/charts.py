@@ -41,7 +41,7 @@ def style_fig(fig):
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(r=20),
+        margin=dict(l=60, r=40),
         legend=dict(font=dict(size=12)),
     )
     fig.update_xaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)

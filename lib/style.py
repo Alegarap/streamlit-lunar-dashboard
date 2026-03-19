@@ -39,10 +39,11 @@ CUSTOM_CSS = """
 }
 
 [data-testid="stMetric"] {
-    border: 1px solid rgba(128, 128, 128, 0.2);
+    background: linear-gradient(145deg, #2A3154, #252B45) !important;
+    border: 1px solid rgba(168, 85, 247, 0.15);
     border-radius: 12px;
     padding: 16px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 [data-testid="stMetricLabel"] {
     font-size: 0.8rem !important;

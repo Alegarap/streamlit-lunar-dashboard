@@ -28,7 +28,7 @@ with st.sidebar:
         st.rerun()
 
 # --- Fetch data ---
-raw = sb.rpc_call("get_ingestion_stats", {"p_days": 180})
+raw = sb.rpc_fresh("get_ingestion_stats", {"p_days": 180})
 if not raw:
     st.warning("No ingestion data returned from Supabase.")
     st.stop()
@@ -165,7 +165,7 @@ with tab_monthly:
 st.divider()
 st.subheader("Latest Items")
 try:
-    latest = sb.query_table("items", {
+    latest = sb.query_fresh("items", {
         "select": "created_at,source,type,title",
         "order": "created_at.desc",
         "limit": "100",

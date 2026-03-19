@@ -38,7 +38,7 @@ try:
     today_str = today.isoformat()
 
     # Ingestion stats
-    raw = sb.rpc_call("get_ingestion_stats", {"p_days": 7})
+    raw = sb.rpc_fresh("get_ingestion_stats", {"p_days": 7})
     today_items = sum(r["item_count"] for r in (raw or []) if r["day"] == today_str)
     week_items = sum(r["item_count"] for r in (raw or []))
 
@@ -48,7 +48,7 @@ try:
 
     # Cost stats (may not exist yet)
     try:
-        cost_data = sb.rpc_call("get_cost_stats", {"p_days": 7})
+        cost_data = sb.rpc_fresh("get_cost_stats", {"p_days": 7})
         week_cost = sum(float(r.get("total_cost", 0)) for r in (cost_data or []))
         cost_str = format_cost(week_cost)
     except Exception:
@@ -79,7 +79,7 @@ with col2:
 st.divider()
 st.markdown("### Recent Items")
 try:
-    latest = sb.query_table("items", {
+    latest = sb.query_fresh("items", {
         "select": "created_at,source,type,title",
         "order": "created_at.desc",
         "limit": "10",

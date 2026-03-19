@@ -24,7 +24,7 @@ with st.sidebar:
         st.rerun()
 
 # --- Overview metrics ---
-clusters = sb.query_table("clusters", {
+clusters = sb.query_fresh("clusters", {
     "select": "id,label,summary,item_count,source_diversity,hotness_score,first_seen_at,last_surfaced_at",
     "order": "hotness_score.desc.nullslast",
     "limit": "500",
@@ -119,7 +119,7 @@ if clusters:
                     st.caption(f"Last active: {last}")
 
             # Fetch items for this cluster
-            items = sb.query_table("items", {
+            items = sb.query_fresh("items", {
                 "select": "title,source,type,source_date,linear_identifier,source_url",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
@@ -184,7 +184,7 @@ with col2:
 st.divider()
 st.subheader("Evaluation Metrics")
 try:
-    eval_data = sb.query_table("eval_samples", {
+    eval_data = sb.query_fresh("eval_samples", {
         "select": "batch_id,classification,source,sample_pool",
         "classification": "not.is.null",
         "limit": "1000",

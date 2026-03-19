@@ -1,7 +1,6 @@
-"""Custom CSS polish + dark/light theme toggle + Lunar Ventures branding.
+"""Custom CSS polish for Lunar Dashboard.
 
-Native config.toml is set to dark. Toggle switches to light via CSS override.
-Dark mode has zero flash. Light mode may briefly show dark on page switch.
+Dark mode is the default (set in config.toml).
 """
 
 import base64
@@ -10,10 +9,11 @@ from pathlib import Path
 import streamlit as st
 
 # ---------------------------------------------------------------------------
-# Shared CSS (both themes)
+# CSS
 # ---------------------------------------------------------------------------
 
-SHARED_CSS = """
+CUSTOM_CSS = """
+<style>
 /* Sidebar: hide auto-generated nav — replaced by custom page links */
 [data-testid="stSidebarNav"] {
     display: none !important;
@@ -82,155 +82,25 @@ hr {
 [data-testid="stPageLink"]:hover {
     border-color: #A855F7;
 }
-"""
-
-# ---------------------------------------------------------------------------
-# Dark theme — Lunar gradient sidebar
-# ---------------------------------------------------------------------------
-
-DARK_CSS = """
-<style>
-""" + SHARED_CSS + """
-
-/* Lunar neon gradient on sidebar */
-[data-testid="stSidebar"],
-[data-testid="stSidebar"] > div,
-[data-testid="stSidebar"] > div > div,
-[data-testid="stSidebar"] section,
-[data-testid="stSidebar"] section > div {
-    background: linear-gradient(160deg, #2d0a3e 0%, #200938 30%, #2a0d45 60%, #1a0832 100%) !important;
-}
-
-/* Reduce sidebar padding */
-[data-testid="stSidebar"] [data-testid="stSidebarContent"],
-[data-testid="stSidebar"] section[data-testid="stSidebarContent"] {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-}
-
-/* Tighter sidebar elements */
-[data-testid="stSidebar"] .stPageLink,
-[data-testid="stSidebar"] .stMarkdown {
-    margin-bottom: 0 !important;
-    margin-top: 0 !important;
-}
-[data-testid="stSidebar"] .stDivider {
-    margin: 0.5rem 0 !important;
-}
 </style>
 """
 
 # ---------------------------------------------------------------------------
-# Light theme — full override from native dark back to light
+# Auth
 # ---------------------------------------------------------------------------
-
-LIGHT_CSS = """
-<style>
-""" + SHARED_CSS + """
-
-.stApp, [data-testid="stAppViewContainer"],
-[data-testid="stHeader"] {
-    background-color: #FFFFFF !important;
-    color: #1E293B !important;
-}
-.stApp > header {
-    background-color: #FFFFFF !important;
-}
-
-.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
-.stApp p, .stApp span, .stApp label, .stApp div,
-.stMarkdown, .stMarkdown p, .stMarkdown span,
-[data-testid="stMarkdownContainer"],
-[data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] span,
-[data-testid="stMarkdownContainer"] li,
-[data-testid="stMarkdownContainer"] code,
-[data-testid="stMarkdownContainer"] small {
-    color: #1E293B !important;
-}
-
-[data-testid="stMetricLabel"] { color: #64748b !important; opacity: 1; }
-[data-testid="stMetricValue"] { color: #1e293b !important; }
-
-[data-testid="stExpander"] { background-color: #FFFFFF !important; }
-[data-testid="stExpander"] summary { color: #1E293B !important; }
-
-/* Light sidebar with Lunar gradient */
-[data-testid="stSidebar"],
-[data-testid="stSidebar"] > div:first-child {
-    background: linear-gradient(160deg, #fdf2f8 0%, #faf5ff 35%, #f3e8ff 65%, #ede9fe 100%) !important;
-}
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] span,
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] div {
-    color: #1E293B !important;
-}
-
-[data-testid="stTabs"] button { color: #64748b !important; }
-[data-testid="stTabs"] button[aria-selected="true"] { color: #1E293B !important; }
-
-hr { border-color: #e2e8f0 !important; }
-
-[data-testid="stButton"] button {
-    background-color: #FFFFFF !important;
-    color: #1E293B !important;
-    border-color: #e2e8f0 !important;
-}
-[data-testid="stButton"] button:hover {
-    background-color: #f8fafc !important;
-    border-color: #A855F7 !important;
-}
-
-[data-testid="stChatMessage"] {
-    background-color: #f8fafc !important;
-    color: #1E293B !important;
-}
-
-[data-testid="stChatInput"] textarea,
-.stChatInput textarea {
-    background-color: #FFFFFF !important;
-    color: #1E293B !important;
-    border-color: #e2e8f0 !important;
-}
-
-[data-testid="stAlert"] {
-    background-color: #f8fafc !important;
-    color: #1E293B !important;
-    border-color: #e2e8f0 !important;
-}
-
-.stCaption, [data-testid="stCaption"] { color: #64748b !important; }
-</style>
-"""
-
-
-def _is_dark() -> bool:
-    return st.session_state.get("_theme_dark_persist", True)
-
-
-def _on_toggle_change():
-    st.session_state._theme_dark_persist = st.session_state._theme_toggle_widget
-
 
 ALLOWED_DOMAINS = {"lunarventures.eu", "lunar.vc"}
-
-
 _TEST_BYPASS_KEY = "e23817c07dad2c70f7535d7ddd40491e"
 
 
 def require_auth():
     """Gate all pages behind Google OIDC login. Only Lunar emails allowed."""
-    # Design/testing bypass: ?bypass=<key> skips auth
-    # Also check if bypass was already activated in this session
+    # Design/testing bypass
     if st.session_state.get("_auth_bypass"):
         return
     try:
         params = st.query_params
-        if hasattr(params, 'get'):
-            bypass_val = params.get("bypass", "")
-        else:
-            bypass_val = params.get("bypass", [""])[0] if "bypass" in params else ""
+        bypass_val = params.get("bypass", "")
         if bypass_val == _TEST_BYPASS_KEY:
             st.session_state["_auth_bypass"] = True
             return
@@ -239,15 +109,11 @@ def require_auth():
 
     try:
         if not st.user.is_logged_in:
-            # Hide sidebar on login page
             st.markdown(
                 '<style>'
                 '[data-testid="stSidebar"] { display: none !important; }'
                 '[data-testid="stSidebarCollapsedControl"] { display: none !important; }'
-                '</style>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
+                '</style>'
                 '<div style="text-align:center; margin-top:6rem;">'
                 '<h1>🌙 Lunar Dashboard</h1>'
                 '<p style="opacity:0.6; margin-bottom: 2rem;">Sign in with your Lunar Ventures account</p>'
@@ -256,7 +122,6 @@ def require_auth():
             )
             col1, col2, col3 = st.columns([1, 1, 1])
             with col2:
-                # Google "G" logo above button
                 st.markdown(
                     '<div style="text-align:center; margin-bottom:1.5rem;">'
                     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">'
@@ -294,31 +159,26 @@ def require_auth():
                     st.logout()
             st.stop()
     except AttributeError:
-        # st.user not available (older Streamlit or auth not configured)
         pass
 
 
+# ---------------------------------------------------------------------------
+# Main apply function
+# ---------------------------------------------------------------------------
+
 def apply():
-    """Auth gate + CSS + branding. Call once per page."""
+    """Auth gate + CSS + sidebar. Call once per page."""
     require_auth()
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-    # Dark mode is the default. To switch themes, change `base` in
-    # .streamlit/config.toml ("dark" or "light") and redeploy.
-    st.markdown(DARK_CSS, unsafe_allow_html=True)
-
-    # Logo + navigation
-    _sidebar_logo()
+    # Sidebar: logo + nav + user info
     with st.sidebar:
+        st.markdown("**🌙 Lunar Dashboard**")
         st.page_link("app.py", label="Home", icon="🏠")
         st.page_link("pages/4_Ask_Data.py", label="Ask Data", icon="🤖")
         st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
-
-        # Small spacer before user info
-        st.markdown('<div style="min-height:20px;"></div>', unsafe_allow_html=True)
-
-        # User info + logout at bottom
         st.divider()
         try:
             if st.user.is_logged_in:
@@ -326,25 +186,4 @@ def apply():
                 if st.button("Sign out", use_container_width=True):
                     st.logout()
         except AttributeError:
-            pass
-
-
-def _sidebar_logo():
-    """Place Lunar Ventures logo + 'Lunar Dashboard' text in the sidebar."""
-    logo_path = Path(__file__).resolve().parent.parent / "static" / "logo.png"
-
-    with st.sidebar:
-        try:
-            col_logo, col_text = st.columns([1, 3], gap="small")
-            with col_logo:
-                if logo_path.exists():
-                    st.image(str(logo_path), width=36)
-            with col_text:
-                st.markdown(
-                    '<p style="font-size:16px !important;font-weight:700 !important;'
-                    'color:#D946EF !important;margin:0 !important;padding:8px 0 0 0 !important;'
-                    'line-height:1.4 !important;">Lunar Dashboard</p>',
-                    unsafe_allow_html=True,
-                )
-        except Exception:
             pass

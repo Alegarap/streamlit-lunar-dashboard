@@ -218,9 +218,17 @@ _TEST_BYPASS_KEY = "e23817c07dad2c70f7535d7ddd40491e"
 def require_auth():
     """Gate all pages behind Google OIDC login. Only Lunar emails allowed."""
     # Design/testing bypass: ?bypass=<key> skips auth
+    # Also check if bypass was already activated in this session
+    if st.session_state.get("_auth_bypass"):
+        return
     try:
-        bypass = st.query_params.get("bypass", "")
-        if bypass == _TEST_BYPASS_KEY:
+        params = st.query_params
+        if hasattr(params, 'get'):
+            bypass_val = params.get("bypass", "")
+        else:
+            bypass_val = params.get("bypass", [""])[0] if "bypass" in params else ""
+        if bypass_val == _TEST_BYPASS_KEY:
+            st.session_state["_auth_bypass"] = True
             return
     except Exception:
         pass

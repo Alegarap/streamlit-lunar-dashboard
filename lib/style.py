@@ -98,6 +98,13 @@ DARK_CSS = """
     background: linear-gradient(160deg, #2d0a3e 0%, #200938 30%, #2a0d45 60%, #1a0832 100%) !important;
     border-right: 2px solid rgba(169, 85, 247, 0.15) !important;
 }
+
+/* Make sidebar content stretch so spacer pushes user info to bottom */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+}
 </style>
 """
 
@@ -295,8 +302,15 @@ def apply():
         st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
+
+        # Push user info to bottom with spacer
+        st.markdown(
+            '<div style="flex-grow:1; min-height:200px;"></div>',
+            unsafe_allow_html=True,
+        )
+
+        # User info + logout at bottom
         st.divider()
-        # User info + logout
         try:
             if st.user.is_logged_in:
                 st.caption(f"Signed in as {st.user.name}")

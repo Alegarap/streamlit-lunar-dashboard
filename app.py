@@ -73,7 +73,7 @@ with col1:
     st.page_link("pages/3_Clusters.py", label="Clusters & What's Hot", icon="🔬")
 with col2:
     st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
-    st.page_link("pages/4_Ask_Data.py", label="🤖 Ask AI")
+    st.page_link("pages/4_Ask_Data.py", label="Ask AI", icon="✨")
 
 # --- Recent activity ---
 st.divider()

@@ -101,14 +101,21 @@ DARK_CSS = """
     background: linear-gradient(160deg, #2d0a3e 0%, #200938 30%, #2a0d45 60%, #1a0832 100%) !important;
 }
 
-/* Reduce sidebar top padding */
-[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-    padding-top: 1rem !important;
+/* Reduce sidebar padding */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"],
+[data-testid="stSidebar"] section[data-testid="stSidebarContent"] {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
 }
 
-/* Reduce spacing between sidebar elements */
-[data-testid="stSidebar"] .stPageLink {
+/* Tighter sidebar elements */
+[data-testid="stSidebar"] .stPageLink,
+[data-testid="stSidebar"] .stMarkdown {
     margin-bottom: 0 !important;
+    margin-top: 0 !important;
+}
+[data-testid="stSidebar"] .stDivider {
+    margin: 0.5rem 0 !important;
 }
 </style>
 """
@@ -308,11 +315,8 @@ def apply():
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
 
-        # Spacer before user info
-        st.markdown(
-            '<div style="min-height:80px;"></div>',
-            unsafe_allow_html=True,
-        )
+        # Small spacer before user info
+        st.markdown('<div style="min-height:20px;"></div>', unsafe_allow_html=True)
 
         # User info + logout at bottom
         st.divider()
@@ -331,26 +335,15 @@ def _sidebar_logo():
 
     with st.sidebar:
         try:
-            if logo_path.exists():
-                logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
+            col_logo, col_text = st.columns([1, 3], gap="small")
+            with col_logo:
+                if logo_path.exists():
+                    st.image(str(logo_path), width=36)
+            with col_text:
                 st.markdown(
-                    f'<div style="display:flex !important; align-items:center !important; '
-                    f'gap:12px !important; margin-bottom:8px !important;">'
-                    f'<img src="data:image/png;base64,{logo_b64}" '
-                    f'style="width:44px !important; height:44px !important; border-radius:10px !important;" />'
-                    f'<span style="font-size:20px !important; font-weight:700 !important; '
-                    f'background:linear-gradient(135deg, #D946EF, #A855F7) !important; '
-                    f'-webkit-background-clip:text !important; -webkit-text-fill-color:transparent !important; '
-                    f'background-clip:text !important;">Lunar Dashboard</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    '<span style="font-size:20px !important; font-weight:700 !important; '
-                    'background:linear-gradient(135deg, #D946EF, #A855F7) !important; '
-                    '-webkit-background-clip:text !important; -webkit-text-fill-color:transparent !important; '
-                    'background-clip:text !important;">Lunar Dashboard</span>',
+                    '<p style="font-size:16px !important;font-weight:700 !important;'
+                    'color:#D946EF !important;margin:0 !important;padding:8px 0 0 0 !important;'
+                    'line-height:1.4 !important;">Lunar Dashboard</p>',
                     unsafe_allow_html=True,
                 )
         except Exception:

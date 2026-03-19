@@ -142,6 +142,76 @@ def _parse_json(text):
     return json.loads(text.strip())
 
 
+def _build_data_context(df, query):
+    """Build a pre-aggregated summary so the LLM sees accurate totals."""
+    fn = query.get("function", "")
+    lines = [f"Query returned {len(df)} rows. Columns: {list(df.columns)}"]
+
+    if fn == "get_cost_stats" and "total_cost" in df.columns:
+        df["total_cost"] = pd.to_numeric(df["total_cost"], errors="coerce").fillna(0)
+        total = df["total_cost"].sum()
+        lines.append(f"\n**PRE-COMPUTED TOTALS (use these, do NOT re-sum):**")
+        lines.append(f"- Grand total cost: ${total:.2f}")
+        lines.append(f"- Total requests: {int(df['request_count'].sum()) if 'request_count' in df.columns else len(df)}")
+        if "workflow_key" in df.columns:
+            by_wf = df.groupby("workflow_key")["total_cost"].sum().sort_values(ascending=False)
+            lines.append(f"\nCost by workflow:")
+            for wf, cost in by_wf.items():
+                lines.append(f"  - {wf}: ${cost:.2f}")
+        if "model" in df.columns:
+            by_model = df.groupby("model")["total_cost"].sum().sort_values(ascending=False)
+            lines.append(f"\nCost by model:")
+            for m, cost in by_model.items():
+                lines.append(f"  - {m}: ${cost:.2f}")
+        if "day" in df.columns:
+            by_day = df.groupby("day")["total_cost"].sum().sort_values(ascending=False)
+            lines.append(f"\nCost by day:")
+            for d, cost in by_day.items():
+                lines.append(f"  - {d}: ${cost:.2f}")
+
+    elif fn == "get_ingestion_stats" and "item_count" in df.columns:
+        df["item_count"] = pd.to_numeric(df["item_count"], errors="coerce").fillna(0)
+        total = int(df["item_count"].sum())
+        lines.append(f"\n**PRE-COMPUTED TOTALS (use these, do NOT re-sum):**")
+        lines.append(f"- Total items: {total}")
+        if "source" in df.columns:
+            by_src = df.groupby("source")["item_count"].sum().sort_values(ascending=False)
+            lines.append(f"\nBy source:")
+            for s, c in by_src.items():
+                lines.append(f"  - {s}: {int(c)}")
+        if "type" in df.columns:
+            by_type = df.groupby("type")["item_count"].sum().sort_values(ascending=False)
+            lines.append(f"\nBy type:")
+            for t, c in by_type.items():
+                lines.append(f"  - {t}: {int(c)}")
+        if "day" in df.columns:
+            by_day = df.groupby("day")["item_count"].sum().sort_values(ascending=False)
+            lines.append(f"\nBy day:")
+            for d, c in by_day.items():
+                lines.append(f"  - {d}: {int(c)}")
+
+    elif fn == "get_hot_clusters":
+        lines.append(f"\nTop clusters:")
+        for _, row in df.iterrows():
+            r = row.to_dict()
+            lines.append(
+                f"  - {r.get('label', 'Unlabeled')} (score: {r.get('hotness_score', 0)}, "
+                f"{r.get('item_count', 0)} items, {r.get('source_diversity', 0)} sources)"
+                f"{': ' + r['summary'] if r.get('summary') else ''}"
+            )
+
+    else:
+        # Generic: send rows but cap at 50
+        if len(df) > 50:
+            lines.append(f"\nFirst 50 rows (of {len(df)}):")
+            lines.append(json.dumps(df.head(50).to_dict(orient="records"), default=str))
+        else:
+            lines.append(f"\nAll {len(df)} rows:")
+            lines.append(json.dumps(df.to_dict(orient="records"), default=str))
+
+    return "\n".join(lines)
+
+
 # --------------------------------------------------------------------------
 # UI
 # --------------------------------------------------------------------------
@@ -272,28 +342,27 @@ if prompt:
 
         # --- Pass 2: analyze the data and write response ---
         with st.spinner("Analyzing..."):
-            # Summarize data for the LLM (limit to avoid token overflow)
-            if len(df) > 50:
-                data_summary = json.dumps(df.head(50).to_dict(orient="records"), default=str)
-                data_note = f"Showing first 50 of {len(df)} rows."
-            else:
-                data_summary = json.dumps(df.to_dict(orient="records"), default=str)
-                data_note = f"{len(df)} rows total."
+            # Build a smart summary so the LLM sees accurate totals
+            # even when there are many rows
+            data_context = _build_data_context(df, query)
 
             try:
                 raw2 = _llm_call([
                     {"role": "system", "content": ANALYSIS_PROMPT},
                     {"role": "user", "content": (
                         f"User's question: {prompt}\n\n"
-                        f"Query results ({data_note}):\n{data_summary}\n\n"
-                        f"Columns: {list(df.columns)}\n"
-                        f"Write your response."
+                        f"{data_context}\n\n"
+                        f"Write your response. Use the TOTALS provided — do NOT re-sum from rows."
                     )},
                 ], max_tokens=1500)
                 response = _parse_json(raw2)
             except json.JSONDecodeError:
-                # LLM returned plain text instead of JSON — use it directly
-                response = {"message": raw2}
+                # LLM returned plain text — clean it up and use directly
+                clean = raw2.strip()
+                # Remove any partial JSON artifacts
+                if clean.startswith("{") or clean.startswith("```"):
+                    clean = "I found the data but had trouble formatting the response. Please try rephrasing your question."
+                response = {"message": clean}
             except Exception as e:
                 response = {"message": f"I got the data but couldn't analyze it: {e}"}
 

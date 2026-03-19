@@ -95,16 +95,8 @@ DARK_CSS = """
 /* Lunar neon gradient on sidebar */
 [data-testid="stSidebar"],
 [data-testid="stSidebar"] > div:first-child {
-    background: linear-gradient(160deg, #2d0a3e 0%, #1a0832 35%, #250d42 65%, #3b1055 100%) !important;
-}
-
-/* Bold gradient accent line at top of sidebar */
-[data-testid="stSidebar"]::before {
-    content: "";
-    display: block;
-    height: 4px;
-    background: linear-gradient(90deg, #F472B6, #D946EF, #A855F7, #7C3AED);
-    margin: 0 0 0.5rem 0;
+    background: linear-gradient(160deg, #2d0a3e 0%, #200938 30%, #2a0d45 60%, #1a0832 100%) !important;
+    border-right: 2px solid rgba(169, 85, 247, 0.15) !important;
 }
 </style>
 """
@@ -148,13 +140,6 @@ LIGHT_CSS = """
 [data-testid="stSidebar"],
 [data-testid="stSidebar"] > div:first-child {
     background: linear-gradient(160deg, #fdf2f8 0%, #faf5ff 35%, #f3e8ff 65%, #ede9fe 100%) !important;
-}
-[data-testid="stSidebar"]::before {
-    content: "";
-    display: block;
-    height: 4px;
-    background: linear-gradient(90deg, #F472B6, #D946EF, #A855F7, #7C3AED);
-    margin: 0 0 0.5rem 0;
 }
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] span,
@@ -328,32 +313,16 @@ def _sidebar_logo():
     with st.sidebar:
         try:
             if logo_path.exists():
-                logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
-                st.markdown(
-                    f'<div style="display:flex; align-items:center; gap:14px; '
-                    f'padding:0.75rem 0 1.25rem 0; border-bottom:1px solid rgba(128,128,128,0.2); '
-                    f'margin-bottom:0.75rem;">'
-                    f'<img src="data:image/png;base64,{logo_b64}" '
-                    f'style="width:56px; height:56px; border-radius:12px;" />'
-                    f'<div>'
-                    f'<div style="font-size:1.5rem; font-weight:700; '
-                    f'color:#D946EF; '
-                    f'line-height:1.3;">Lunar</div>'
-                    f'<div style="font-size:1.5rem; font-weight:700; '
-                    f'color:#A855F7; '
-                    f'line-height:1.3;">Dashboard</div>'
-                    f'</div></div>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    '<div style="padding:0.5rem 0 1rem 0; border-bottom:1px solid rgba(128,128,128,0.2); '
-                    'margin-bottom:0.75rem;">'
-                    '<span style="font-size:1.3rem; font-weight:700; '
-                    'background:linear-gradient(135deg, #D946EF, #A855F7); '
-                    '-webkit-background-clip:text; -webkit-text-fill-color:transparent;">'
-                    'Lunar Dashboard</span></div>',
-                    unsafe_allow_html=True,
-                )
+                st.image(str(logo_path), width=60)
+            st.markdown(
+                '<p style="font-size:22px !important; font-weight:700 !important; '
+                'color:#D946EF !important; margin:0 !important; padding:0 !important; '
+                'line-height:1.2 !important;">Lunar</p>'
+                '<p style="font-size:22px !important; font-weight:700 !important; '
+                'color:#A855F7 !important; margin:0 0 12px 0 !important; padding:0 !important; '
+                'line-height:1.2 !important;">Dashboard</p>',
+                unsafe_allow_html=True,
+            )
+            st.divider()
         except Exception:
             pass

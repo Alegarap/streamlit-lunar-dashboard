@@ -24,6 +24,10 @@ from lib import style
 from lib.charts import COLORS, SOURCE_ORDER, metric_row, style_fig
 
 style.apply()
+st.markdown(
+    '<style>[data-testid="stMetricValue"] { color: #F4A7C8 !important; }</style>',
+    unsafe_allow_html=True,
+)
 st.title("Ingestion Dashboard")
 
 with st.sidebar:

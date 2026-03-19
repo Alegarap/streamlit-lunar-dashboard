@@ -115,7 +115,7 @@ def colored_metric(label, value, color):
     """Render a metric card with a colored value."""
     st.markdown(
         f'<div style="border:1px solid rgba(168,85,247,0.15); border-radius:12px; '
-        f'padding:16px 20px; background:linear-gradient(145deg,#2A3154,#252B45); '
+        f'padding:16px 20px; margin-bottom:16px; background:linear-gradient(145deg,#2A3154,#252B45); '
         f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),'
         f'inset 0 1px 0 rgba(255,255,255,0.04);">'
         f'<p style="font-size:0.8rem; font-weight:500; text-transform:uppercase; '
@@ -132,11 +132,11 @@ with col_ing:
     st.subheader("Ingestion")
     c1, c2, c3 = st.columns(3)
     with c1:
-        colored_metric("Themes", f"{themes_total:,}", "#EC4899")
+        colored_metric("Themes", f"{themes_total:,}", "#F4A7C8")
     with c2:
-        colored_metric("Deals", f"{deals_total:,}", "#EC4899")
+        colored_metric("Deals", f"{deals_total:,}", "#F4A7C8")
     with c3:
-        colored_metric("Total", f"{items_total:,}", "#EC4899")
+        colored_metric("Total", f"{items_total:,}", "#F4A7C8")
 
     if ingestion_by_source:
         rows = []
@@ -154,7 +154,7 @@ with col_ing:
             fig = px.bar(
                 df_ing, x="Source", y="Count", color="Type",
                 barmode="group",
-                color_discrete_map={"theme": "#A855F7", "deal": "#14B8A6"},
+                color_discrete_map={"theme": "#A855F7", "deal": "#F59E0B"},
             )
             style_fig(fig)
             fig.update_layout(
@@ -167,11 +167,11 @@ with col_cost:
     st.subheader("Cost")
     c1, c2, c3 = st.columns(3)
     with c1:
-        colored_metric("Spend", format_cost(total_cost), "#34D399")
+        colored_metric("Spend", format_cost(total_cost), "#A7F3D0")
     with c2:
-        colored_metric("Requests", f"{total_requests:,}", "#34D399")
+        colored_metric("Requests", f"{total_requests:,}", "#A7F3D0")
     with c3:
-        colored_metric("Keys", str(len(cost_by_key)), "#34D399")
+        colored_metric("Keys", str(len(cost_by_key)), "#A7F3D0")
 
     if cost_by_key:
         rows = []

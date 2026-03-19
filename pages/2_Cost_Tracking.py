@@ -19,6 +19,10 @@ from lib import style
 from lib.charts import format_cost, metric_row, style_fig, workflow_display_name
 
 style.apply()
+st.markdown(
+    '<style>[data-testid="stMetricValue"] { color: #A7F3D0 !important; }</style>',
+    unsafe_allow_html=True,
+)
 st.title("Cost Tracking")
 
 with st.sidebar:

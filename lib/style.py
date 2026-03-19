@@ -211,7 +211,7 @@ def apply():
         )
         st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
         st.page_link("app.py", label="Home", icon="🏠")
-        st.page_link("pages/4_Ask_Data.py", label="Ask Data", icon="🤖")
+        st.page_link("pages/4_Ask_Data.py", label="Ask AI", icon="🤖")
         st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")

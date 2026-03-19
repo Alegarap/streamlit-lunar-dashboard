@@ -1,4 +1,4 @@
-"""Ask Data — AI-powered natural language data assistant.
+"""Ask AI — AI-powered natural language data assistant.
 
 Two-pass agent: (1) LLM decides what to query, (2) data is fetched,
 (3) LLM analyzes the results and writes a human response.
@@ -20,7 +20,7 @@ from lib import supabase_client as sb
 from lib import style
 
 style.apply()
-st.title("Ask Data")
+st.title("Ask AI")
 
 with st.sidebar:
     st.caption("Powered by Claude via OpenRouter")

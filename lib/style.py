@@ -322,44 +322,40 @@ def apply():
 
 
 def _sidebar_logo():
-    """Place Lunar Ventures logo + 'Lunar Dashboard' text above the navigation."""
+    """Place Lunar Ventures logo + 'Lunar Dashboard' text in the sidebar."""
     logo_path = Path(__file__).resolve().parent.parent / "static" / "logo.png"
 
-    # Build a composite SVG with the logo image embedded + text
-    try:
-        if logo_path.exists():
-            logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
-            svg = (
-                '<svg xmlns="http://www.w3.org/2000/svg" '
-                'xmlns:xlink="http://www.w3.org/1999/xlink" '
-                'viewBox="0 0 520 80">'
-                f'<image href="data:image/png;base64,{logo_b64}" '
-                'x="0" y="0" width="76" height="76" />'
-                '<text x="86" y="34" font-family="system-ui,sans-serif" '
-                'font-size="32" font-weight="700" fill="#D946EF">'
-                'Lunar</text>'
-                '<text x="86" y="66" font-family="system-ui,sans-serif" '
-                'font-size="32" font-weight="700" fill="#A855F7">'
-                'Dashboard</text>'
-                '</svg>'
-            )
-        else:
-            svg = (
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80">'
-                '<text x="4" y="34" font-family="system-ui,sans-serif" '
-                'font-size="32" font-weight="700" fill="#D946EF">'
-                'Lunar</text>'
-                '<text x="4" y="66" font-family="system-ui,sans-serif" '
-                'font-size="32" font-weight="700" fill="#A855F7">'
-                'Dashboard</text>'
-                '</svg>'
-            )
-
-        svg_b64 = base64.b64encode(svg.encode()).decode()
-        data_uri = f"data:image/svg+xml;base64,{svg_b64}"
+    with st.sidebar:
         try:
-            st.logo(data_uri, size="large")
-        except TypeError:
-            st.logo(data_uri)
-    except Exception:
-        pass
+            if logo_path.exists():
+                logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
+                st.markdown(
+                    f'<div style="display:flex; align-items:center; gap:12px; '
+                    f'padding:0.5rem 0 1rem 0; border-bottom:1px solid rgba(128,128,128,0.2); '
+                    f'margin-bottom:0.75rem;">'
+                    f'<img src="data:image/png;base64,{logo_b64}" '
+                    f'style="width:48px; height:48px; border-radius:10px;" />'
+                    f'<div>'
+                    f'<div style="font-size:1.2rem; font-weight:700; '
+                    f'background:linear-gradient(135deg, #D946EF, #A855F7); '
+                    f'-webkit-background-clip:text; -webkit-text-fill-color:transparent; '
+                    f'line-height:1.2;">Lunar</div>'
+                    f'<div style="font-size:1.2rem; font-weight:700; '
+                    f'background:linear-gradient(135deg, #A855F7, #7C3AED); '
+                    f'-webkit-background-clip:text; -webkit-text-fill-color:transparent; '
+                    f'line-height:1.2;">Dashboard</div>'
+                    f'</div></div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<div style="padding:0.5rem 0 1rem 0; border-bottom:1px solid rgba(128,128,128,0.2); '
+                    'margin-bottom:0.75rem;">'
+                    '<span style="font-size:1.3rem; font-weight:700; '
+                    'background:linear-gradient(135deg, #D946EF, #A855F7); '
+                    '-webkit-background-clip:text; -webkit-text-fill-color:transparent;">'
+                    'Lunar Dashboard</span></div>',
+                    unsafe_allow_html=True,
+                )
+        except Exception:
+            pass

@@ -290,7 +290,7 @@ if prompt:
         with st.spinner("Thinking..."):
             # Build conversation context (last 6 messages)
             history = []
-            for msg in st.session_state.messages[-6:]:
+            for msg in st.session_state.messages[-10:]:
                 if msg["role"] == "user":
                     history.append({"role": "user", "content": msg["content"]})
                 elif msg.get("content") and msg["role"] == "assistant":

@@ -209,14 +209,17 @@ def _on_toggle_change():
     st.session_state._theme_dark_persist = st.session_state._theme_toggle_widget
 
 
+ALLOWED_DOMAINS = {"lunarventures.eu", "lunar.vc"}
+
+
 def require_auth():
-    """Gate all pages behind Google OIDC login. Call before any content."""
+    """Gate all pages behind Google OIDC login. Only Lunar emails allowed."""
     try:
         if not st.user.is_logged_in:
             st.markdown(
                 '<div style="text-align:center; margin-top:4rem;">'
                 '<h2>🌙 Lunar Dashboard</h2>'
-                '<p style="opacity:0.6;">Sign in to access the dashboard</p>'
+                '<p style="opacity:0.6;">Sign in with your Lunar Ventures account</p>'
                 '</div>',
                 unsafe_allow_html=True,
             )
@@ -224,6 +227,24 @@ def require_auth():
             with col2:
                 if st.button("Sign in with Google", use_container_width=True):
                     st.login("google")
+            st.stop()
+
+        # Check email domain
+        email = st.user.email or ""
+        domain = email.split("@")[-1].lower() if "@" in email else ""
+        if domain not in ALLOWED_DOMAINS:
+            st.markdown(
+                '<div style="text-align:center; margin-top:4rem;">'
+                '<h2>🌙 Lunar Dashboard</h2>'
+                f'<p style="opacity:0.6;">Access restricted to Lunar Ventures team.</p>'
+                f'<p style="opacity:0.4;">{email} is not authorized.</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                if st.button("Sign out", use_container_width=True):
+                    st.logout()
             st.stop()
     except AttributeError:
         # st.user not available (older Streamlit or auth not configured)

@@ -78,8 +78,22 @@ hr {
     font-size: 0.85rem !important;
     transition: all 0.15s ease;
 }
+/* Dataframes / tables */
 [data-testid="stDataFrame"] {
-    border-radius: 8px;
+    background: linear-gradient(145deg, #2A3154, #252B45) !important;
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* Plotly charts */
+[data-testid="stPlotlyChart"] {
+    background: linear-gradient(145deg, #2A3154, #252B45) !important;
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 [data-testid="stPageLink"] {
     border: 1px solid rgba(128, 128, 128, 0.15);

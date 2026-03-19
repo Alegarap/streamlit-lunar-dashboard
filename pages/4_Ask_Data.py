@@ -104,29 +104,35 @@ Use REST queries ONLY when you need to search by keyword, filter by source, or l
 - Not null: "column": "not.is.null"
 
 ## Response Format
-You MUST respond with a JSON object. The JSON can include a natural language message AND optionally a query:
+You MUST respond with a JSON object.
 
-For questions that need data:
+**DEFAULT: text-only response with data fetched silently for your analysis:**
 ```json
 {{
-  "message": "Your conversational response explaining what you're looking up and what you found",
-  "query": {{
-    "type": "rest" or "rpc",
-    "table": "items",
-    "function": "get_ingestion_stats",
-    "params": {{}},
-  }},
-  "display": "table" | "bar_chart" | "line_chart" | "pie_chart" | "metric",
+  "message": "Your detailed natural language answer with **bold numbers**, analysis, and insights.",
+  "query": {{"type": "rpc", "function": "...", "params": {{...}}}}
+}}
+```
+The query is executed and the results are given to you to write your answer, but NO table or chart is shown to the user. The user only sees your message. This is the DEFAULT for most questions.
+
+**ONLY when the user explicitly asks for a table, chart, or raw data**, add a display field:
+```json
+{{
+  "message": "Brief caption",
+  "query": {{...}},
+  "display": "table" | "bar_chart" | "line_chart" | "pie_chart",
   "chart_config": {{"x": "col", "y": "col", "color": "col"}}
 }}
 ```
 
-For conversational responses (no data needed):
+**For conversation with no data needed:**
 ```json
 {{
-  "message": "Your response text here"
+  "message": "Your response text"
 }}
 ```
+
+CRITICAL: Do NOT include "display" unless the user says words like "show", "table", "chart", "graph", "list", "breakdown". Questions like "how much", "how many", "what's hot" should get TEXT answers only.
 
 ## Critical Rules for Date Queries — READ CAREFULLY
 The p_days parameter means "go back N days from today". p_days=0 means today only.
@@ -142,31 +148,36 @@ The p_days parameter means "go back N days from today". p_days=0 means today onl
 
 NEVER guess p_days. Calculate it from the table above. ALWAYS use RPCs for time-based aggregation questions — never REST queries with date filters.
 
-## Examples — notice how the response style matches the question type
+## Examples — notice: NO display field unless user asks for chart/table
 
-User: "Show me a chart of ingestion for the last 3 days" (WANTS A CHART)
+User: "How much did we spend this week?" → TEXT ANSWER (no display field!)
 ```json
-{{"message": "Here's the ingestion breakdown for the last 3 days by source:", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 2}}}}, "display": "bar_chart", "chart_config": {{"x": "day", "y": "item_count", "color": "source"}}}}
+{{"message": "This week's total spend is **$18.78** across all workflows. The biggest cost driver is **Academic Sourcing** at **$6.74**, followed by the default key at **$0.50**. The rest is spread across HN Sourcing, Conference Sourcing, and the Streamlit dashboard itself.", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": {(today - week_start).days}}}}}}}
 ```
 
-User: "How many items came in today?" (WANTS A NUMBER)
+User: "How many items came in today?" → TEXT ANSWER (no display field!)
 ```json
-{{"message": "Today ({today.isoformat()}) we've ingested **118 items** so far — 38 themes and 80 deals. The main sources are arxiv (103 items), hackernews (9), and conferences (6).", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 0}}}}, "display": "table"}}
+{{"message": "Today ({today.isoformat()}) we've ingested **118 items** — **38 themes** and **80 deals**. The main sources are arxiv (103 items), hackernews (9), and conferences (6).", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 0}}}}}}
 ```
 
-User: "What's hot right now?" (WANTS ANALYSIS)
+User: "What's hot right now?" → TEXT ANALYSIS (no display field!)
 ```json
-{{"message": "The hottest cluster right now is **AI Agent Security and Governance** with a score of 0.76 — it has 61 items from multiple sources, showing strong convergence. Other notable hot themes include **Photonic AI Inference Accelerators** (0.64) and **LLM Tooling & Observability** (0.62). The pattern suggests strong interest in AI infrastructure security and novel hardware acceleration.", "query": {{"type": "rpc", "function": "get_hot_clusters", "params": {{"min_score": 0.5, "lim": 10}}}}, "display": "table"}}
+{{"message": "The hottest cluster is **AI Agent Security and Governance** (score: 0.76) with 61 items from multiple sources — strong convergence signal. Other notable hot themes:\\n\\n- **Photonic AI Inference Accelerators** (0.64) — 11 items\\n- **LLM Tooling & Observability** (0.62) — 43 items\\n- **Quantum Error Correction** (0.61) — 41 items\\n\\nThe pattern suggests strong interest in AI infrastructure security and novel hardware.", "query": {{"type": "rpc", "function": "get_hot_clusters", "params": {{"min_score": 0.5, "lim": 10}}}}}}
 ```
 
-User: "How much did we spend this week?" (WANTS A NUMBER + CONTEXT)
+User: "Show me a chart of ingestion for the last 3 days" → HAS "show" + "chart" = display!
 ```json
-{{"message": "This week's total spend is **$18.78** across all workflows. The biggest cost driver is Academic Sourcing at $6.74, followed by factory (default key) at $0.50. Compared to last week this is normal operational cost.", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": {(today - week_start).days}}}}}, "display": "table"}}
+{{"message": "Ingestion by source for the last 3 days:", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 2}}}}, "display": "bar_chart", "chart_config": {{"x": "day", "y": "item_count", "color": "source"}}}}
 ```
 
-User: "Thanks!"
+User: "Show me the cost breakdown in a table" → HAS "show" + "table" = display!
 ```json
-{{"message": "You're welcome! Let me know if you have any other questions about the data."}}
+{{"message": "Cost breakdown:", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": {(today - week_start).days}}}}}, "display": "table"}}
+```
+
+User: "Thanks!" → No query needed
+```json
+{{"message": "You're welcome! Let me know if you have any other questions."}}
 ```
 """
 
@@ -347,21 +358,19 @@ if prompt:
             st.stop()
 
         df = pd.DataFrame(data)
-        display = response_spec.get("display", "table")
+        display = response_spec.get("display")  # None = text only (default)
         chart_config = response_spec.get("chart_config", {})
         msg_data = {
             "role": "assistant",
             "content": message,
-            "dataframe": df.to_dict(orient="records"),
         }
 
-        # Render charts
+        # Only show visual output when the AI explicitly set a display type
         if display in ("bar_chart", "line_chart", "pie_chart"):
             x = chart_config.get("x", df.columns[0] if len(df.columns) > 0 else None)
             y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else df.columns[0] if len(df.columns) > 0 else None)
             color = chart_config.get("color")
 
-            # Validate columns
             if x and x not in df.columns:
                 x = df.columns[0] if len(df.columns) > 0 else None
             if y and y not in df.columns:
@@ -381,7 +390,6 @@ if prompt:
                         fig = px.pie(df, names=x, values=y)
                     fig.update_layout(margin=dict(t=10))
                     st.plotly_chart(fig, use_container_width=True)
-                    # Store chart spec for re-rendering in history
                     msg_data["chart_fig_data"] = {
                         "type": ct,
                         "data": df.to_dict(orient="records"),
@@ -390,12 +398,11 @@ if prompt:
                 except Exception:
                     pass
 
-        if display == "metric" and len(df) == 1 and len(df.columns) <= 4:
-            cols = st.columns(len(df.columns))
-            for col, c in zip(cols, df.columns):
-                col.metric(c, df[c].iloc[0])
-        else:
-            # Always show data table
+        elif display == "table":
             st.dataframe(df, use_container_width=True, hide_index=True)
+            msg_data["dataframe"] = df.to_dict(orient="records")
+
+        # If no display field — text-only response. Data was fetched
+        # for the AI's analysis but not shown to the user.
 
         st.session_state.messages.append(msg_data)

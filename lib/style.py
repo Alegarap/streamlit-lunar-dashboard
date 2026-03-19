@@ -19,6 +19,18 @@ SHARED_CSS = """
     display: none !important;
 }
 
+/* Force wide layout on all pages */
+[data-testid="stAppViewBlockContainer"] {
+    max-width: 100% !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+.block-container {
+    max-width: 100% !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
 [data-testid="stMetric"] {
     border: 1px solid rgba(128, 128, 128, 0.2);
     border-radius: 12px;

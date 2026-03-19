@@ -199,23 +199,9 @@ def _on_toggle_change():
 
 def apply():
     """Inject CSS + render theme toggle + branding. Call once per page."""
-    # Theme toggle
-    if "_theme_dark_persist" not in st.session_state:
-        st.session_state._theme_dark_persist = True
-
-    with st.sidebar:
-        st.toggle(
-            "Dark mode",
-            value=st.session_state._theme_dark_persist,
-            key="_theme_toggle_widget",
-            on_change=_on_toggle_change,
-        )
-
-    # CSS
-    if _is_dark():
-        st.markdown(DARK_CSS, unsafe_allow_html=True)
-    else:
-        st.markdown(LIGHT_CSS, unsafe_allow_html=True)
+    # Dark mode is the default. To switch themes, change `base` in
+    # .streamlit/config.toml ("dark" or "light") and redeploy.
+    st.markdown(DARK_CSS, unsafe_allow_html=True)
 
     # Logo + navigation
     _sidebar_logo()

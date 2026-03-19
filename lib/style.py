@@ -80,9 +80,7 @@ hr {
 }
 /* Dataframes / tables */
 [data-testid="stDataFrame"] {
-    background: linear-gradient(145deg, #2A3154, #252B45) !important;
-    border-radius: 12px;
-    padding: 0 16px;
+    border-radius: 8px;
 }
 
 /* Plotly charts */

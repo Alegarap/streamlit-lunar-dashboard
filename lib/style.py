@@ -14,6 +14,8 @@ import streamlit as st
 
 CUSTOM_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;800&display=swap');
+
 /* Sidebar: hide auto-generated nav — replaced by custom page links */
 [data-testid="stSidebarNav"] {
     display: none !important;
@@ -173,7 +175,15 @@ def apply():
 
     # Sidebar: logo + nav + user info
     with st.sidebar:
-        st.markdown("**🌙 Lunar Dashboard**")
+        st.markdown(
+            '<p style="font-size:18px !important; font-weight:800 !important; '
+            'font-family:Inter,system-ui,sans-serif !important; '
+            'letter-spacing:0.08em !important; margin:0 0 8px 0 !important; '
+            'background:linear-gradient(135deg, #F472B6, #D946EF, #A855F7) !important; '
+            '-webkit-background-clip:text !important; -webkit-text-fill-color:transparent !important; '
+            'background-clip:text !important;">🌙 LUNAR DASHBOARD</p>',
+            unsafe_allow_html=True,
+        )
         st.page_link("app.py", label="Home", icon="🏠")
         st.page_link("pages/4_Ask_Data.py", label="Ask Data", icon="🤖")
         st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")

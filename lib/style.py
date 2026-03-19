@@ -82,14 +82,12 @@ hr {
 [data-testid="stDataFrame"] {
     background: linear-gradient(145deg, #2A3154, #252B45) !important;
     border-radius: 12px;
-    padding: 8px;
 }
 
 /* Plotly charts */
 [data-testid="stPlotlyChart"] {
     background: linear-gradient(145deg, #2A3154, #252B45) !important;
     border-radius: 12px;
-    padding: 12px;
 }
 [data-testid="stPageLink"] {
     border: 1px solid rgba(128, 128, 128, 0.15);

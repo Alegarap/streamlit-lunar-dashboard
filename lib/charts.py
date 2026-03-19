@@ -37,11 +37,15 @@ WORKFLOW_NAMES = {
 
 
 def style_fig(fig):
-    """Apply transparent backgrounds so CSS gradient shows through."""
+    """Apply transparent backgrounds, readable grid lines, and safe margins."""
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(r=20),
+        legend=dict(font=dict(size=12)),
     )
+    fig.update_xaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
+    fig.update_yaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
     return fig
 
 

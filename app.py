@@ -92,42 +92,8 @@ for row in raw_ingestion or []:
 
 items_total = themes_total + deals_total
 
-# --- Ingestion KPIs ---
-st.subheader("Ingestion")
-metric_row([
-    ("Themes", f"{themes_total:,}", None),
-    ("Deals", f"{deals_total:,}", None),
-    ("Total Items", f"{items_total:,}", None),
-])
-
-# --- Ingestion chart: stacked bar by source, split themes/deals ---
-if ingestion_by_source:
-    rows = []
-    for src in SOURCE_ORDER:
-        if src in ingestion_by_source:
-            rows.append({"Source": src, "Type": "theme", "Count": ingestion_by_source[src]["theme"]})
-            rows.append({"Source": src, "Type": "deal", "Count": ingestion_by_source[src]["deal"]})
-    # Include sources not in SOURCE_ORDER
-    for src in ingestion_by_source:
-        if src not in SOURCE_ORDER:
-            rows.append({"Source": src, "Type": "theme", "Count": ingestion_by_source[src]["theme"]})
-            rows.append({"Source": src, "Type": "deal", "Count": ingestion_by_source[src]["deal"]})
-
-    if rows:
-        df_ing = pd.DataFrame(rows)
-        fig = px.bar(
-            df_ing, x="Source", y="Count", color="Type",
-            barmode="group",
-            color_discrete_map={"theme": "#A855F7", "deal": "#14B8A6"},
-            title=f"Ingestion by Source — {period}",
-        )
-        style_fig(fig)
-        st.plotly_chart(fig, use_container_width=True)
-
-st.divider()
-
 # ---------------------------------------------------------------------------
-# COST
+# COST (process data before layout)
 # ---------------------------------------------------------------------------
 cost_by_key = defaultdict(lambda: {"cost": 0.0, "requests": 0})
 total_cost = 0.0
@@ -142,33 +108,64 @@ for row in raw_cost or []:
     total_cost += cost
     total_requests += reqs
 
-# --- Cost KPIs ---
-st.subheader("Cost")
-metric_row([
-    ("Total Spend", format_cost(total_cost), None),
-    ("Requests", f"{total_requests:,}", None),
-    ("Workflows", str(len(cost_by_key)), None),
-])
+# ---------------------------------------------------------------------------
+# TWO-COLUMN LAYOUT: Ingestion | Cost
+# ---------------------------------------------------------------------------
+col_ing, col_cost = st.columns(2)
 
-# --- Cost chart: horizontal bar by workflow key ---
-if cost_by_key:
-    rows = []
-    for key, vals in cost_by_key.items():
-        rows.append({
-            "Workflow": workflow_display_name(key),
-            "Cost": vals["cost"],
-            "Requests": vals["requests"],
-        })
-    df_cost = pd.DataFrame(rows).sort_values("Cost", ascending=True)
+with col_ing:
+    st.subheader("Ingestion")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Themes", f"{themes_total:,}")
+    c2.metric("Deals", f"{deals_total:,}")
+    c3.metric("Total", f"{items_total:,}")
 
-    fig = px.bar(
-        df_cost, x="Cost", y="Workflow",
-        orientation="h",
-        title=f"Spend by API Key — {period}",
-        labels={"Cost": "Cost ($)", "Workflow": ""},
-    )
-    style_fig(fig)
-    st.plotly_chart(fig, use_container_width=True)
+    if ingestion_by_source:
+        rows = []
+        for src in SOURCE_ORDER:
+            if src in ingestion_by_source:
+                rows.append({"Source": src, "Type": "theme", "Count": ingestion_by_source[src]["theme"]})
+                rows.append({"Source": src, "Type": "deal", "Count": ingestion_by_source[src]["deal"]})
+        for src in ingestion_by_source:
+            if src not in SOURCE_ORDER:
+                rows.append({"Source": src, "Type": "theme", "Count": ingestion_by_source[src]["theme"]})
+                rows.append({"Source": src, "Type": "deal", "Count": ingestion_by_source[src]["deal"]})
+
+        if rows:
+            df_ing = pd.DataFrame(rows)
+            fig = px.bar(
+                df_ing, x="Source", y="Count", color="Type",
+                barmode="group",
+                color_discrete_map={"theme": "#A855F7", "deal": "#14B8A6"},
+            )
+            style_fig(fig)
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+
+with col_cost:
+    st.subheader("Cost")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Spend", format_cost(total_cost))
+    c2.metric("Requests", f"{total_requests:,}")
+    c3.metric("Keys", str(len(cost_by_key)))
+
+    if cost_by_key:
+        rows = []
+        for key, vals in cost_by_key.items():
+            rows.append({
+                "Workflow": workflow_display_name(key),
+                "Cost": vals["cost"],
+            })
+        df_cost = pd.DataFrame(rows).sort_values("Cost", ascending=True)
+
+        fig = px.bar(
+            df_cost, x="Cost", y="Workflow",
+            orientation="h",
+            labels={"Cost": "Cost ($)", "Workflow": ""},
+        )
+        style_fig(fig)
+        fig.update_layout(height=350)
+        st.plotly_chart(fig, use_container_width=True)
 
 # --- Recent activity ---
 st.divider()

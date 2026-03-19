@@ -21,17 +21,9 @@ CUSTOM_CSS = """
     display: none !important;
 }
 
-/* Sidebar: reduce top padding and push sign-out to bottom */
+/* Sidebar: reduce top padding */
 [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-    padding-top: 1rem !important;
-}
-[data-testid="stSidebar"] [data-testid="stSidebarContent"] > div:first-child {
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 100vh !important;
-}
-[data-testid="stSidebar"] hr {
-    margin-top: auto !important;
+    padding-top: 0.5rem !important;
 }
 
 /* Force wide layout on all pages */

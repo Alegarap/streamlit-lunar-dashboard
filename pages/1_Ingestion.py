@@ -21,7 +21,7 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import COLORS, SOURCE_ORDER, metric_row
+from lib.charts import COLORS, SOURCE_ORDER, metric_row, style_fig
 
 style.apply()
 st.title("Ingestion Dashboard")
@@ -123,6 +123,7 @@ with tab_daily:
         title="Daily Ingestion by Source",
     )
     fig.update_layout(barmode="stack", xaxis_tickformat="%b %d")
+    style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_weekly:
@@ -141,6 +142,7 @@ with tab_weekly:
         title="Weekly Ingestion by Source",
     )
     fig.update_layout(barmode="stack", xaxis_tickformat="%b %d")
+    style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_monthly:
@@ -164,6 +166,7 @@ with tab_monthly:
         title="Monthly Ingestion by Source",
     )
     fig.update_layout(barmode="stack")
+    style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 # --- Latest items table ---

@@ -36,6 +36,15 @@ WORKFLOW_NAMES = {
 }
 
 
+def style_fig(fig):
+    """Apply transparent backgrounds so CSS gradient shows through."""
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+
 def workflow_display_name(key: str) -> str:
     """Convert a workflow key like OPENROUTER_KEY_FALLBACK to a human-readable name."""
     return WORKFLOW_NAMES.get(key, key)

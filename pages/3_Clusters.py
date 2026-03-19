@@ -12,7 +12,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import COLORS, metric_row
+from lib.charts import COLORS, metric_row, style_fig
 
 style.apply()
 st.title("Clusters & What's Hot")
@@ -83,6 +83,7 @@ if clusters:
         margin=dict(l=10, r=40, t=10, b=40),
         showlegend=False,
     )
+    style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)
 
     # Drill-down cards
@@ -165,6 +166,7 @@ with col1:
             margin=dict(t=10),
             showlegend=False,
         )
+        style_fig(fig)
         st.plotly_chart(fig, use_container_width=True)
 
 with col2:
@@ -178,6 +180,7 @@ with col2:
             color_discrete_sequence=["#14B8A6"],
         )
         fig.update_layout(margin=dict(t=10), showlegend=False)
+        style_fig(fig)
         st.plotly_chart(fig, use_container_width=True)
 
 # --- Eval metrics ---
@@ -208,6 +211,7 @@ try:
                 color=class_counts.index,
                 color_discrete_map=colors,
             )
+            style_fig(fig)
             st.plotly_chart(fig, use_container_width=True)
 
         with col2:
@@ -218,6 +222,7 @@ try:
                 barmode="stack",
                 color_discrete_map=colors,
             )
+            style_fig(fig)
             st.plotly_chart(fig, use_container_width=True)
 
         # Signal rate by source

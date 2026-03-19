@@ -191,6 +191,107 @@ with col_cost:
         fig.update_layout(height=350)
         st.plotly_chart(fig, use_container_width=True)
 
+# ---------------------------------------------------------------------------
+# TOP 5 CLUSTERS
+# ---------------------------------------------------------------------------
+st.divider()
+st.subheader("Top Clusters")
+
+try:
+    top_clusters = sb.query_fresh("clusters", {
+        "select": "label,hotness_score,item_count,source_diversity,first_seen_at,last_surfaced_at",
+        "order": "hotness_score.desc.nullslast",
+        "limit": "5",
+    })
+
+    if top_clusters:
+        for rank, cluster in enumerate(top_clusters, 1):
+            score = float(cluster.get("hotness_score") or 0)
+            label = cluster.get("label") or "Unlabeled"
+            items = cluster.get("item_count", 0)
+            diversity = cluster.get("source_diversity", 0)
+
+            # Time calculations
+            first_seen = cluster.get("first_seen_at", "")
+            last_active = cluster.get("last_surfaced_at", "")
+
+            def parse_ts(ts):
+                """Parse ISO timestamp, stripping timezone."""
+                if not ts:
+                    return None
+                try:
+                    # Strip timezone: remove +HH:MM or Z at the end
+                    import re
+                    clean = re.sub(r'[+-]\d{2}:\d{2}$|Z$', '', ts)
+                    return datetime.fromisoformat(clean)
+                except Exception:
+                    return None
+
+            age_str = ""
+            if first_seen:
+                first_dt = parse_ts(first_seen)
+                age_days = (datetime.now() - first_dt).days if first_dt else 0
+                if age_days <= 1:
+                    age_str = "new today"
+                elif age_days < 7:
+                    age_str = f"{age_days}d old"
+                elif age_days < 30:
+                    age_str = f"{age_days // 7}w old"
+                else:
+                    age_str = f"{age_days // 30}mo old"
+
+            momentum = ""
+            if last_active:
+                last_dt = parse_ts(last_active)
+                days_since = (datetime.now() - last_dt).days if last_dt else 999
+                if days_since == 0:
+                    momentum = "🟢 active today"
+                elif days_since <= 2:
+                    momentum = "🟢 active this week"
+                elif days_since <= 7:
+                    momentum = "🟡 last week"
+                else:
+                    momentum = "🔴 cooling off"
+
+            # Score color
+            if score >= 0.6:
+                score_color = "#EF4444"
+            elif score >= 0.4:
+                score_color = "#F59E0B"
+            else:
+                score_color = "#94A3B8"
+
+            # Render as a styled row
+            bar_width = int(score * 100)
+            st.markdown(
+                f'<div style="display:flex; align-items:center; gap:16px; padding:12px 16px; '
+                f'margin-bottom:8px; border-radius:10px; '
+                f'background:linear-gradient(145deg,#2A3154,#252B45); '
+                f'border:1px solid rgba(168,85,247,0.1);">'
+                f'<span style="font-size:1.4rem; font-weight:800; opacity:0.3; min-width:28px;">#{rank}</span>'
+                f'<div style="flex:1; min-width:0;">'
+                f'<div style="display:flex; align-items:baseline; gap:10px; margin-bottom:4px;">'
+                f'<span style="font-weight:700; font-size:1rem;">{label}</span>'
+                f'<span style="font-size:0.75rem; color:{score_color}; font-weight:700;">{score:.2f}</span>'
+                f'</div>'
+                f'<div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; width:100%; margin-bottom:6px;">'
+                f'<div style="background:{score_color}; border-radius:4px; height:6px; width:{bar_width}%;"></div>'
+                f'</div>'
+                f'<div style="display:flex; gap:16px; font-size:0.75rem; opacity:0.6;">'
+                f'<span>{items} items</span>'
+                f'<span>{diversity} source{"s" if diversity != 1 else ""}</span>'
+                f'<span>{age_str}</span>'
+                f'<span>{momentum}</span>'
+                f'</div>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("No cluster data available.")
+except Exception:
+    st.info("Cluster data not available.")
+
 # --- Recent activity ---
 st.divider()
 st.markdown("### Recent Items")

@@ -21,6 +21,16 @@ CUSTOM_CSS = """
     display: none !important;
 }
 
+/* Sidebar: push sign-out section to bottom */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] > div:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+}
+[data-testid="stSidebar"] hr {
+    margin-top: auto !important;
+}
+
 /* Force wide layout on all pages */
 [data-testid="stAppViewBlockContainer"] {
     max-width: 100% !important;
@@ -202,11 +212,6 @@ def apply():
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
 
-        # Push sign-out to bottom of sidebar
-        st.markdown(
-            '<div style="flex-grow:1; min-height:40vh;"></div>',
-            unsafe_allow_html=True,
-        )
         st.divider()
         try:
             if st.user.is_logged_in:

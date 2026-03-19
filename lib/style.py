@@ -21,7 +21,10 @@ CUSTOM_CSS = """
     display: none !important;
 }
 
-/* Sidebar: push sign-out section to bottom */
+/* Sidebar: reduce top padding and push sign-out to bottom */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+    padding-top: 1rem !important;
+}
 [data-testid="stSidebar"] [data-testid="stSidebarContent"] > div:first-child {
     display: flex !important;
     flex-direction: column !important;

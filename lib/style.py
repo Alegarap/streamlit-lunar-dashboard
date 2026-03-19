@@ -195,11 +195,18 @@ def apply():
             '</div>',
             unsafe_allow_html=True,
         )
+        st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
         st.page_link("app.py", label="Home", icon="🏠")
         st.page_link("pages/4_Ask_Data.py", label="Ask Data", icon="🤖")
         st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
+
+        # Push sign-out to bottom of sidebar
+        st.markdown(
+            '<div style="flex-grow:1; min-height:40vh;"></div>',
+            unsafe_allow_html=True,
+        )
         st.divider()
         try:
             if st.user.is_logged_in:

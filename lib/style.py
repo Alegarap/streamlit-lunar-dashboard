@@ -176,13 +176,23 @@ def apply():
     # Sidebar: logo + nav + user info
     with st.sidebar:
         logo_path = Path(__file__).resolve().parent.parent / "static" / "logo.png"
+        logo_html = ""
         if logo_path.exists():
-            st.image(str(logo_path), width=36)
+            logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
+            logo_html = (
+                f'<img src="data:image/jpeg;base64,{logo_b64}" '
+                'style="width:44px; height:44px; object-fit:contain; flex-shrink:0;" />'
+            )
         st.markdown(
-            '<p style="font-size:15px !important; font-weight:800 !important; '
-            'font-family:Inter,system-ui,sans-serif !important; '
-            'letter-spacing:0.1em !important; margin:0 0 8px 0 !important; '
-            'color:#D946EF !important;">LUNAR DASHBOARD</p>',
+            '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">'
+            f'{logo_html}'
+            '<span style="font-size:15px; font-weight:800; '
+            'font-family:Inter,system-ui,sans-serif; '
+            'letter-spacing:0.1em; '
+            'background:linear-gradient(135deg, #EC4899, #A855F7); '
+            '-webkit-background-clip:text; -webkit-text-fill-color:transparent; '
+            'background-clip:text;">LUNAR DASHBOARD</span>'
+            '</div>',
             unsafe_allow_html=True,
         )
         st.page_link("app.py", label="Home", icon="🏠")

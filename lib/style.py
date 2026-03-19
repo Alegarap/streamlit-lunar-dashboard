@@ -330,20 +330,18 @@ def _sidebar_logo():
             if logo_path.exists():
                 logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
                 st.markdown(
-                    f'<div style="display:flex; align-items:center; gap:12px; '
-                    f'padding:0.5rem 0 1rem 0; border-bottom:1px solid rgba(128,128,128,0.2); '
+                    f'<div style="display:flex; align-items:center; gap:14px; '
+                    f'padding:0.75rem 0 1.25rem 0; border-bottom:1px solid rgba(128,128,128,0.2); '
                     f'margin-bottom:0.75rem;">'
                     f'<img src="data:image/png;base64,{logo_b64}" '
-                    f'style="width:48px; height:48px; border-radius:10px;" />'
+                    f'style="width:56px; height:56px; border-radius:12px;" />'
                     f'<div>'
-                    f'<div style="font-size:1.2rem; font-weight:700; '
-                    f'background:linear-gradient(135deg, #D946EF, #A855F7); '
-                    f'-webkit-background-clip:text; -webkit-text-fill-color:transparent; '
-                    f'line-height:1.2;">Lunar</div>'
-                    f'<div style="font-size:1.2rem; font-weight:700; '
-                    f'background:linear-gradient(135deg, #A855F7, #7C3AED); '
-                    f'-webkit-background-clip:text; -webkit-text-fill-color:transparent; '
-                    f'line-height:1.2;">Dashboard</div>'
+                    f'<div style="font-size:1.5rem; font-weight:700; '
+                    f'color:#D946EF; '
+                    f'line-height:1.3;">Lunar</div>'
+                    f'<div style="font-size:1.5rem; font-weight:700; '
+                    f'color:#A855F7; '
+                    f'line-height:1.3;">Dashboard</div>'
                     f'</div></div>',
                     unsafe_allow_html=True,
                 )

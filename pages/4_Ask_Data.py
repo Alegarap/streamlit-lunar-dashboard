@@ -18,6 +18,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
+from lib.charts import style_fig
 
 style.apply()
 st.title("Ask AI")
@@ -268,6 +269,7 @@ for msg in st.session_state.messages:
                 else:
                     fig = None
                 if fig:
+                    style_fig(fig)
                     st.plotly_chart(fig, use_container_width=True)
             except Exception:
                 pass
@@ -395,6 +397,7 @@ if prompt:
                         fig = px.line(df, x=x, y=y, color=color)
                     else:
                         fig = px.pie(df, names=x, values=y)
+                    style_fig(fig)
                     fig.update_layout(margin=dict(t=10))
                     st.plotly_chart(fig, use_container_width=True)
                     msg_data["chart_fig_data"] = {

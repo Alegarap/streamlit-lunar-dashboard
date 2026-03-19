@@ -1,14 +1,12 @@
-"""Ask Data — AI-powered natural language querying.
+"""Ask Data — AI-powered natural language data assistant.
 
-Uses Claude via OpenRouter to translate natural language questions into
-Supabase REST API queries, then renders results as tables/charts.
-Supports conversational follow-ups and natural language responses.
+Two-pass agent: (1) LLM decides what to query, (2) data is fetched,
+(3) LLM analyzes the results and writes a human response.
 """
 
 import json
 import os
 import sys
-import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -30,7 +28,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# Resolve API key from st.secrets or os.environ
+# Resolve API key
 OPENROUTER_KEY = ""
 try:
     OPENROUTER_KEY = st.secrets.get("OPENROUTER_KEY_STREAMLIT", "")
@@ -39,11 +37,10 @@ except FileNotFoundError:
 if not OPENROUTER_KEY:
     OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
 if not OPENROUTER_KEY:
-    st.error(
-        "Missing OPENROUTER_KEY_STREAMLIT. Add it to Streamlit Cloud secrets "
-        "or set it as an environment variable."
-    )
+    st.error("Missing OPENROUTER_KEY_STREAMLIT.")
     st.stop()
+
+MODEL = "anthropic/claude-sonnet-4-6"
 
 # Dynamic date context
 today = datetime.now().date()
@@ -51,137 +48,104 @@ yesterday = today - timedelta(days=1)
 week_start = today - timedelta(days=today.weekday())
 month_start = today.replace(day=1)
 
-SYSTEM_PROMPT = f"""You are a helpful data analyst assistant for Lunar Ventures, a VC fund. You have access to their ambient sourcing database and can query it to answer questions.
+# --------------------------------------------------------------------------
+# Pass 1 prompt: decide what query to run (or none)
+# --------------------------------------------------------------------------
 
-## Important Context
-- **Today's date**: {today.isoformat()} ({today.strftime('%A')})
-- **Yesterday**: {yesterday.isoformat()}
-- **This week started**: {week_start.isoformat()} (Monday)
-- **This month started**: {month_start.isoformat()}
-- All timestamps are in UTC.
+QUERY_PROMPT = f"""You are a data query planner for Lunar Ventures' BI dashboard. Given a user question, decide what database query to run.
 
-## Your Behavior — READ THIS CAREFULLY
-You are a smart analyst, not a chart-generating machine. Think about WHAT the user actually wants:
+Today: {today.isoformat()} ({today.strftime('%A')}). Week started: {week_start.isoformat()}. Month started: {month_start.isoformat()}.
 
-1. **"Show me X" / "Graph of X" / "Chart X"** → They want a visualization. Use display: "bar_chart"/"line_chart"/"pie_chart".
-2. **"How many X?" / "What's the total?" / "Count of X"** → They want a number or short answer. Write the answer in your message with the actual number. Use display: "table" only if the breakdown is useful.
-3. **"What's hot?" / "Any interesting trends?" / "Summarize X"** → They want your analysis and interpretation as text. Query the data, then write an insightful summary in your message. Include the data as a table for reference, not a chart.
-4. **"Why is X?" / "Compare X vs Y" / "What should we do about X?"** → They want your reasoning. Write a thoughtful text response. Query if needed, but the value is in your analysis, not the raw data.
-5. **Casual conversation / "thanks" / "ok"** → Just respond naturally, no query needed.
+## Available queries
 
-KEY PRINCIPLE: Your "message" field is the primary response. Charts/tables are supporting evidence. Always write a meaningful message that directly answers the question — don't just say "Here's the data:" and dump a chart. Include actual numbers, comparisons, and insights in your message text.
+### RPCs (for time-based aggregation)
+The p_days param: p_days=0 → today only, p_days=2 → last 3 days, p_days=6 → last 7 days.
+- get_ingestion_stats(p_days) → day, source, type, item_count
+- get_hot_clusters(min_score, lim) → label, summary, item_count, source_diversity, hotness_score. NOTE: hotness_score is 0.0 to 1.0 (not 0-100). Use min_score=0.3 for hot clusters, 0.5 for very hot.
+- get_cost_stats(p_days) → day, workflow_key, model, request_count, total_input_tokens, total_output_tokens, total_cost
 
-## Database Schema
+### REST (for keyword search, filtering, listing)
+- items: select, order, limit, filters (source=eq.arxiv, type=eq.theme, title=ilike.*keyword*, etc.)
+- clusters: select, order, limit, filters (hotness_score=gt.0.3, label=ilike.*keyword*, etc.)
 
-### items — All investment themes and deals
-Key columns: id, type ('theme'/'deal'), title, summary, source ('linear'/'hackernews'/'arxiv'/'conference'/'tigerclaw'), source_url, linear_identifier (e.g. 'THE-2398'), stage, signal_strength, cluster_id, created_at, source_date
+## p_days reference
+| User says | p_days |
+|-----------|--------|
+| today | 0 |
+| last 3 days | 2 |
+| this week (Mon-today) | {(today - week_start).days} |
+| last 7 days | 6 |
+| this month | {(today - month_start).days} |
 
-### clusters — Groups of similar items
-Key columns: id, label, summary, item_count, source_diversity, hotness_score (0-1), first_seen_at, last_surfaced_at
-
-### eval_samples — Evaluation feedback
-Key columns: batch_id (e.g. '2026-W11'), source, reviewer, sample_pool ('hot'/'random'), classification ('signal'/'weak_signal'/'shareable'/'noise'), comment, created_at
-
-### cost_log — API cost tracking
-Key columns: workflow_key, model, input_tokens, output_tokens, total_cost (decimal), created_at
-
-## Available RPCs — ALWAYS USE THESE for time-based questions
-The RPCs use `WHERE created_at >= (CURRENT_DATE - p_days)`. This means:
-- p_days=0 → today only
-- p_days=1 → yesterday + today (2 days)
-- p_days=2 → 3 days of data
-- p_days=6 → 7 days (this week if today is Sunday)
-
-**RPCs:**
-- `get_ingestion_stats(p_days)` → day, source, type, item_count — for ingestion/items questions
-- `get_hot_clusters(min_score, lim)` → cluster rows sorted by hotness
-- `get_cost_stats(p_days)` → day, workflow_key, model, request_count, total_input_tokens, total_output_tokens, total_cost — for cost questions
-
-## PostgREST REST queries — only for non-time-based questions
-Use REST queries ONLY when you need to search by keyword, filter by source, or list specific items. NEVER use REST for "today/this week/last N days" — use the RPCs above instead.
-- Filtering: "column": "eq.value", "gt.5", "gte.2026-03-15T00:00:00", "ilike.*keyword*", "in.(a,b,c)"
-- Select/order/limit: "select": "col1,col2", "order": "col.desc", "limit": "20"
-- Not null: "column": "not.is.null"
-
-## Response Format
-You MUST respond with a JSON object.
-
-**DEFAULT: text-only response with data fetched silently for your analysis:**
-```json
-{{
-  "message": "Your detailed natural language answer with **bold numbers**, analysis, and insights.",
-  "query": {{"type": "rpc", "function": "...", "params": {{...}}}}
-}}
-```
-The query is executed and the results are given to you to write your answer, but NO table or chart is shown to the user. The user only sees your message. This is the DEFAULT for most questions.
-
-**ONLY when the user explicitly asks for a table, chart, or raw data**, add a display field:
-```json
-{{
-  "message": "Brief caption",
-  "query": {{...}},
-  "display": "table" | "bar_chart" | "line_chart" | "pie_chart",
-  "chart_config": {{"x": "col", "y": "col", "color": "col"}}
-}}
-```
-
-**For conversation with no data needed:**
-```json
-{{
-  "message": "Your response text"
-}}
-```
-
-CRITICAL: Do NOT include "display" unless the user says words like "show", "table", "chart", "graph", "list", "breakdown". Questions like "how much", "how many", "what's hot" should get TEXT answers only.
-
-## Critical Rules for Date Queries — READ CAREFULLY
-The p_days parameter means "go back N days from today". p_days=0 means today only.
-
-| User says | Correct p_days | Dates returned |
-|-----------|---------------|----------------|
-| "today" | p_days=0 | {today.isoformat()} only |
-| "yesterday" | DO NOT USE RPC. Use REST with created_at gte/lt | {yesterday.isoformat()} only |
-| "last 3 days" | p_days=2 | {(today - timedelta(days=2)).isoformat()} to {today.isoformat()} (3 days) |
-| "last 7 days" / "this week" | p_days=6 | 7 days of data |
-| "this week (Mon-today)" | p_days={(today - week_start).days} | {week_start.isoformat()} to {today.isoformat()} |
-| "this month" | p_days={(today - month_start).days} | {month_start.isoformat()} to {today.isoformat()} |
-
-NEVER guess p_days. Calculate it from the table above. ALWAYS use RPCs for time-based aggregation questions — never REST queries with date filters.
-
-## Examples — notice: NO display field unless user asks for chart/table
-
-User: "How much did we spend this week?" → TEXT ANSWER (no display field!)
-```json
-{{"message": "This week's total spend is **$18.78** across all workflows. The biggest cost driver is **Academic Sourcing** at **$6.74**, followed by the default key at **$0.50**. The rest is spread across HN Sourcing, Conference Sourcing, and the Streamlit dashboard itself.", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": {(today - week_start).days}}}}}}}
-```
-
-User: "How many items came in today?" → TEXT ANSWER (no display field!)
-```json
-{{"message": "Today ({today.isoformat()}) we've ingested **118 items** — **38 themes** and **80 deals**. The main sources are arxiv (103 items), hackernews (9), and conferences (6).", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 0}}}}}}
-```
-
-User: "What's hot right now?" → TEXT ANALYSIS (no display field!)
-```json
-{{"message": "The hottest cluster is **AI Agent Security and Governance** (score: 0.76) with 61 items from multiple sources — strong convergence signal. Other notable hot themes:\\n\\n- **Photonic AI Inference Accelerators** (0.64) — 11 items\\n- **LLM Tooling & Observability** (0.62) — 43 items\\n- **Quantum Error Correction** (0.61) — 41 items\\n\\nThe pattern suggests strong interest in AI infrastructure security and novel hardware.", "query": {{"type": "rpc", "function": "get_hot_clusters", "params": {{"min_score": 0.5, "lim": 10}}}}}}
-```
-
-User: "Show me a chart of ingestion for the last 3 days" → HAS "show" + "chart" = display!
-```json
-{{"message": "Ingestion by source for the last 3 days:", "query": {{"type": "rpc", "function": "get_ingestion_stats", "params": {{"p_days": 2}}}}, "display": "bar_chart", "chart_config": {{"x": "day", "y": "item_count", "color": "source"}}}}
-```
-
-User: "Show me the cost breakdown in a table" → HAS "show" + "table" = display!
-```json
-{{"message": "Cost breakdown:", "query": {{"type": "rpc", "function": "get_cost_stats", "params": {{"p_days": {(today - week_start).days}}}}}, "display": "table"}}
-```
-
-User: "Thanks!" → No query needed
-```json
-{{"message": "You're welcome! Let me know if you have any other questions."}}
-```
+## Response
+Return JSON only:
+- Need data: {{"query": {{"type": "rpc", "function": "...", "params": {{...}}}}}} or {{"query": {{"type": "rest", "table": "...", "params": {{...}}}}}}
+- No data needed (greeting, thanks, etc.): {{"no_query": true, "reply": "Your response"}}
 """
 
-# --- Quick queries ---
+# --------------------------------------------------------------------------
+# Pass 2 prompt: analyze data and respond naturally
+# --------------------------------------------------------------------------
+
+ANALYSIS_PROMPT = f"""You are a helpful data analyst for Lunar Ventures, a VC fund. You just queried the database and got results. Now write a clear, natural language response.
+
+Today: {today.isoformat()}.
+
+## Rules
+- Write like you're talking to a colleague. Be concise but insightful.
+- Lead with the key number or finding in **bold**.
+- Add brief context or breakdown where useful.
+- Use markdown: **bold** for key numbers, bullet points for lists.
+- Do NOT say "based on the data" or "the query returned" — just state the facts.
+- If the user asked for a chart or table, set the display field. Otherwise, text only.
+
+## Response format
+Return JSON:
+- Text response: {{"message": "Your natural language answer with **bold numbers**"}}
+- With chart (only if user said "chart"/"graph"/"show"): {{"message": "Caption", "display": "bar_chart", "chart_config": {{"x": "column_name_from_data", "y": "column_name_from_data", "color": "column_name_from_data_or_null"}}}}
+  chart_config x/y/color MUST be actual column names from the query results. display can be "bar_chart", "line_chart", or "pie_chart".
+- With table (only if user said "table"/"list"/"show"/"breakdown"): {{"message": "Caption", "display": "table"}}
+"""
+
+# --------------------------------------------------------------------------
+# LLM call helper
+# --------------------------------------------------------------------------
+
+def _llm_call(messages, max_tokens=1024):
+    """Call OpenRouter and return the response content string."""
+    body = json.dumps({
+        "model": MODEL,
+        "messages": messages,
+        "temperature": 0.1,
+        "max_tokens": max_tokens,
+    }).encode()
+    req = urllib.request.Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=45) as resp:
+        return json.loads(resp.read())["choices"][0]["message"]["content"]
+
+
+def _parse_json(text):
+    """Extract JSON from LLM response (handles markdown code blocks)."""
+    if "```" in text:
+        parts = text.split("```")
+        code = parts[1] if len(parts) > 1 else text
+        if code.startswith("json"):
+            code = code[4:]
+        text = code
+    return json.loads(text.strip())
+
+
+# --------------------------------------------------------------------------
+# UI
+# --------------------------------------------------------------------------
+
 st.markdown("**Quick queries:**")
 quick_cols = st.columns(4)
 quick_queries = [
@@ -197,22 +161,20 @@ for col, q in zip(quick_cols, quick_queries):
 
 st.divider()
 
-# --- Chat interface ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if not st.session_state.messages:
     st.markdown(
         '<p style="color: #94a3b8; text-align: center; margin: 3rem 0;">'
-        "Ask me anything about your sourcing data. I can show charts, "
-        "give you numbers, or analyze trends.<br>"
-        '"What\'s hot right now?" · '
-        '"How much did we spend this week?" · '
-        '"Show a chart of ingestion by source for the last 7 days"'
+        "Ask me anything about your sourcing data. I'll answer in plain language "
+        "with key numbers and insights. Say \"show chart\" or \"show table\" "
+        "when you want visuals."
         "</p>",
         unsafe_allow_html=True,
     )
 
+# Render chat history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         if msg.get("content"):
@@ -224,7 +186,6 @@ for msg in st.session_state.messages:
                 hide_index=True,
             )
         if msg.get("chart_fig_data") is not None:
-            # Re-render chart from stored spec
             try:
                 spec = msg["chart_fig_data"]
                 cdf = pd.DataFrame(spec["data"])
@@ -241,6 +202,10 @@ for msg in st.session_state.messages:
             except Exception:
                 pass
 
+# --------------------------------------------------------------------------
+# Handle new input
+# --------------------------------------------------------------------------
+
 prompt = st.chat_input("Ask a question about your data...") or st.session_state.pop("ask_input", None)
 
 if prompt:
@@ -249,139 +214,112 @@ if prompt:
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
+        # --- Pass 1: decide what query to run ---
         with st.spinner("Thinking..."):
-            # Build conversation history (last 8 messages for context)
+            # Build conversation context (last 6 messages)
             history = []
-            for msg in st.session_state.messages[-8:]:
+            for msg in st.session_state.messages[-6:]:
                 if msg["role"] == "user":
                     history.append({"role": "user", "content": msg["content"]})
                 elif msg.get("content") and msg["role"] == "assistant":
-                    # Include data summary in history for follow-ups
-                    assistant_text = msg["content"]
-                    if msg.get("dataframe"):
-                        df_summary = pd.DataFrame(msg["dataframe"])
-                        assistant_text += f"\n[Data: {len(df_summary)} rows, columns: {list(df_summary.columns)}]"
-                    history.append({"role": "assistant", "content": assistant_text})
+                    history.append({"role": "assistant", "content": msg["content"]})
 
-            body = json.dumps({
-                "model": "anthropic/claude-sonnet-4-6",
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    *history,
-                ],
-                "temperature": 0.1,
-                "max_tokens": 2048,
-            }).encode()
-            req = urllib.request.Request(
-                "https://openrouter.ai/api/v1/chat/completions",
-                data=body,
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_KEY}",
-                    "Content-Type": "application/json",
-                },
-            )
-            response_spec = None
-            raw_content = ""
             try:
-                with urllib.request.urlopen(req, timeout=45) as resp:
-                    ai_response = json.loads(resp.read())
-                raw_content = ai_response["choices"][0]["message"]["content"]
-
-                # Parse JSON from response (handle markdown code blocks)
-                json_str = raw_content
-                if "```" in json_str:
-                    parts = json_str.split("```")
-                    code_block = parts[1] if len(parts) > 1 else json_str
-                    if code_block.startswith("json"):
-                        code_block = code_block[4:]
-                    json_str = code_block
-                response_spec = json.loads(json_str.strip())
-            except json.JSONDecodeError:
-                # AI returned non-JSON — show as conversational text
-                st.markdown(raw_content)
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": raw_content,
-                })
+                raw = _llm_call([
+                    {"role": "system", "content": QUERY_PROMPT},
+                    *history,
+                ], max_tokens=512)
+                query_spec = _parse_json(raw)
             except Exception as e:
-                st.error(f"AI query failed: {e}")
+                st.markdown(f"Sorry, I had trouble understanding that. Error: {e}")
                 st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": f"Error: {e}",
+                    "role": "assistant", "content": f"Error: {e}",
                 })
+                st.stop()
 
-        if response_spec is None:
-            st.stop()
-
-        # Show the conversational message
-        message = response_spec.get("message", "")
-        if message:
-            st.markdown(message)
-
-        # Execute query if present
-        query = response_spec.get("query")
-        if not query:
-            # Pure conversational response, no data
+        # No query needed — direct reply
+        if query_spec.get("no_query"):
+            reply = query_spec.get("reply", "How can I help?")
+            st.markdown(reply)
             st.session_state.messages.append({
-                "role": "assistant",
-                "content": message,
+                "role": "assistant", "content": reply,
             })
             st.stop()
 
-        data = None
-        try:
-            # Use uncached queries so Ask Data always shows fresh data
-            if query.get("type") == "rpc":
-                data = sb.rpc_fresh(
-                    query["function"],
-                    query.get("params", {}),
-                )
-            else:
-                data = sb.query_fresh(
-                    query["table"],
-                    query.get("params", {}),
-                )
-        except Exception as e:
-            st.error(f"Query failed: {e}")
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": f"{message}\n\nQuery error: {e}",
-            })
-            st.stop()
+        # --- Execute the query ---
+        with st.spinner("Querying data..."):
+            query = query_spec.get("query", {})
+            try:
+                if query.get("type") == "rpc":
+                    data = sb.rpc_fresh(query["function"], query.get("params", {}))
+                else:
+                    data = sb.query_fresh(query["table"], query.get("params", {}))
+            except Exception as e:
+                st.markdown(f"Query failed: {e}")
+                st.session_state.messages.append({
+                    "role": "assistant", "content": f"Query error: {e}",
+                })
+                st.stop()
 
         if not data:
-            st.info("No results found for this query.")
+            st.markdown("No results found for that query.")
             st.session_state.messages.append({
-                "role": "assistant",
-                "content": f"{message}\n\nNo results found.",
+                "role": "assistant", "content": "No results found.",
             })
             st.stop()
 
         df = pd.DataFrame(data)
-        display = response_spec.get("display")  # None = text only (default)
-        chart_config = response_spec.get("chart_config", {})
-        msg_data = {
-            "role": "assistant",
-            "content": message,
-        }
 
-        # Only show visual output when the AI explicitly set a display type
+        # --- Pass 2: analyze the data and write response ---
+        with st.spinner("Analyzing..."):
+            # Summarize data for the LLM (limit to avoid token overflow)
+            if len(df) > 50:
+                data_summary = json.dumps(df.head(50).to_dict(orient="records"), default=str)
+                data_note = f"Showing first 50 of {len(df)} rows."
+            else:
+                data_summary = json.dumps(df.to_dict(orient="records"), default=str)
+                data_note = f"{len(df)} rows total."
+
+            try:
+                raw2 = _llm_call([
+                    {"role": "system", "content": ANALYSIS_PROMPT},
+                    {"role": "user", "content": (
+                        f"User's question: {prompt}\n\n"
+                        f"Query results ({data_note}):\n{data_summary}\n\n"
+                        f"Columns: {list(df.columns)}\n"
+                        f"Write your response."
+                    )},
+                ], max_tokens=1500)
+                response = _parse_json(raw2)
+            except json.JSONDecodeError:
+                # LLM returned plain text instead of JSON — use it directly
+                response = {"message": raw2}
+            except Exception as e:
+                response = {"message": f"I got the data but couldn't analyze it: {e}"}
+
+        # --- Render the response ---
+        message = response.get("message", "")
+        display = response.get("display")
+        chart_config = response.get("chart_config", {})
+
+        if message:
+            st.markdown(message)
+
+        msg_data = {"role": "assistant", "content": message}
+
         if display in ("bar_chart", "line_chart", "pie_chart"):
             x = chart_config.get("x", df.columns[0] if len(df.columns) > 0 else None)
-            y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else df.columns[0] if len(df.columns) > 0 else None)
+            y = chart_config.get("y", df.columns[1] if len(df.columns) > 1 else None)
             color = chart_config.get("color")
-
             if x and x not in df.columns:
-                x = df.columns[0] if len(df.columns) > 0 else None
+                x = df.columns[0]
             if y and y not in df.columns:
-                y = df.columns[1] if len(df.columns) > 1 else df.columns[0] if len(df.columns) > 0 else None
+                y = df.columns[1] if len(df.columns) > 1 else df.columns[0]
             if color and color not in df.columns:
                 color = None
-
             if x and y:
                 try:
-                    chart_type_map = {"bar_chart": "bar", "line_chart": "line", "pie_chart": "pie"}
-                    ct = chart_type_map.get(display, "bar")
+                    ct = {"bar_chart": "bar", "line_chart": "line", "pie_chart": "pie"}.get(display, "bar")
                     if ct == "bar":
                         fig = px.bar(df, x=x, y=y, color=color)
                     elif ct == "line":
@@ -391,8 +329,7 @@ if prompt:
                     fig.update_layout(margin=dict(t=10))
                     st.plotly_chart(fig, use_container_width=True)
                     msg_data["chart_fig_data"] = {
-                        "type": ct,
-                        "data": df.to_dict(orient="records"),
+                        "type": ct, "data": df.to_dict(orient="records"),
                         "x": x, "y": y, "color": color,
                     }
                 except Exception:
@@ -401,8 +338,5 @@ if prompt:
         elif display == "table":
             st.dataframe(df, use_container_width=True, hide_index=True)
             msg_data["dataframe"] = df.to_dict(orient="records")
-
-        # If no display field — text-only response. Data was fetched
-        # for the AI's analysis but not shown to the user.
 
         st.session_state.messages.append(msg_data)

@@ -111,14 +111,32 @@ for row in raw_cost or []:
 # ---------------------------------------------------------------------------
 # TWO-COLUMN LAYOUT: Ingestion | Cost
 # ---------------------------------------------------------------------------
+def colored_metric(label, value, color):
+    """Render a metric card with a colored value."""
+    st.markdown(
+        f'<div style="border:1px solid rgba(168,85,247,0.15); border-radius:12px; '
+        f'padding:16px 20px; background:linear-gradient(145deg,#2A3154,#252B45); '
+        f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),'
+        f'inset 0 1px 0 rgba(255,255,255,0.04);">'
+        f'<p style="font-size:0.8rem; font-weight:500; text-transform:uppercase; '
+        f'letter-spacing:0.02em; opacity:0.7; margin:0 0 4px 0;">{label}</p>'
+        f'<p style="font-size:1.8rem; font-weight:700; margin:0; color:{color};">{value}</p>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
 col_ing, col_cost = st.columns(2)
 
 with col_ing:
     st.subheader("Ingestion")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Themes", f"{themes_total:,}")
-    c2.metric("Deals", f"{deals_total:,}")
-    c3.metric("Total", f"{items_total:,}")
+    with c1:
+        colored_metric("Themes", f"{themes_total:,}", "#EC4899")
+    with c2:
+        colored_metric("Deals", f"{deals_total:,}", "#EC4899")
+    with c3:
+        colored_metric("Total", f"{items_total:,}", "#EC4899")
 
     if ingestion_by_source:
         rows = []
@@ -139,15 +157,21 @@ with col_ing:
                 color_discrete_map={"theme": "#A855F7", "deal": "#14B8A6"},
             )
             style_fig(fig)
-            fig.update_layout(height=350)
+            fig.update_layout(
+                height=350,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            )
             st.plotly_chart(fig, use_container_width=True)
 
 with col_cost:
     st.subheader("Cost")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Spend", format_cost(total_cost))
-    c2.metric("Requests", f"{total_requests:,}")
-    c3.metric("Keys", str(len(cost_by_key)))
+    with c1:
+        colored_metric("Spend", format_cost(total_cost), "#34D399")
+    with c2:
+        colored_metric("Requests", f"{total_requests:,}", "#34D399")
+    with c3:
+        colored_metric("Keys", str(len(cost_by_key)), "#34D399")
 
     if cost_by_key:
         rows = []

@@ -209,8 +209,31 @@ def _on_toggle_change():
     st.session_state._theme_dark_persist = st.session_state._theme_toggle_widget
 
 
+def require_auth():
+    """Gate all pages behind Google OIDC login. Call before any content."""
+    try:
+        if not st.user.is_logged_in:
+            st.markdown(
+                '<div style="text-align:center; margin-top:4rem;">'
+                '<h2>🌙 Lunar Dashboard</h2>'
+                '<p style="opacity:0.6;">Sign in to access the dashboard</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                if st.button("Sign in with Google", use_container_width=True):
+                    st.login("google")
+            st.stop()
+    except AttributeError:
+        # st.user not available (older Streamlit or auth not configured)
+        pass
+
+
 def apply():
-    """Inject CSS + render theme toggle + branding. Call once per page."""
+    """Auth gate + CSS + branding. Call once per page."""
+    require_auth()
+
     # Dark mode is the default. To switch themes, change `base` in
     # .streamlit/config.toml ("dark" or "light") and redeploy.
     st.markdown(DARK_CSS, unsafe_allow_html=True)
@@ -224,6 +247,14 @@ def apply():
         st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
         st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
         st.divider()
+        # User info + logout
+        try:
+            if st.user.is_logged_in:
+                st.caption(f"Signed in as {st.user.name}")
+                if st.button("Sign out", use_container_width=True):
+                    st.logout()
+        except AttributeError:
+            pass
 
 
 def _sidebar_logo():

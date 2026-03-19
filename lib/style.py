@@ -212,8 +212,15 @@ def _on_toggle_change():
 ALLOWED_DOMAINS = {"lunarventures.eu", "lunar.vc"}
 
 
+_TEST_BYPASS_KEY = "e23817c07dad2c70f7535d7ddd40491e"
+
+
 def require_auth():
     """Gate all pages behind Google OIDC login. Only Lunar emails allowed."""
+    # Design/testing bypass: ?bypass=<key> skips auth
+    if st.query_params.get("bypass") == _TEST_BYPASS_KEY:
+        return
+
     try:
         if not st.user.is_logged_in:
             # Hide sidebar on login page

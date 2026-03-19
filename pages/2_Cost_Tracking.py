@@ -29,7 +29,7 @@ with st.sidebar:
 
 # --- Check if cost_log table / RPC exists ---
 try:
-    cost_data = sb.rpc_call("get_cost_stats", {"p_days": 90})
+    cost_data = sb.rpc_fresh("get_cost_stats", {"p_days": 90})
 except urllib.error.HTTPError as e:
     if e.code == 404:
         st.warning(

@@ -254,8 +254,12 @@ def require_auth():
         domain = email.split("@")[-1].lower() if "@" in email else ""
         if domain not in ALLOWED_DOMAINS:
             st.markdown(
-                '<div style="text-align:center; margin-top:4rem;">'
-                '<h2>🌙 Lunar Dashboard</h2>'
+                '<style>'
+                '[data-testid="stSidebar"] { display: none !important; }'
+                '[data-testid="stSidebarCollapsedControl"] { display: none !important; }'
+                '</style>'
+                '<div style="text-align:center; margin-top:6rem;">'
+                '<h1>🌙 Lunar Dashboard</h1>'
                 f'<p style="opacity:0.6;">Access restricted to Lunar Ventures team.</p>'
                 f'<p style="opacity:0.4;">{email} is not authorized.</p>'
                 '</div>',

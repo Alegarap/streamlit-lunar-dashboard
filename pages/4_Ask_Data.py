@@ -257,7 +257,7 @@ Today: {today.isoformat()}.
 4. Do NOT say "based on the data" or "the query returned" — just state facts.
 5. If the user asked to filter by source and the data contains multiple sources, filter the data in your response and only mention the relevant source.
 6. When showing breakdowns, sort by the most interesting dimension.
-7. For cost data, always show dollar amounts.
+7. For cost data, always show dollar amounts. IMPORTANT: Do NOT use the $ character — Streamlit renders it as LaTeX math. Instead write "USD 5.16" or just "5.16 USD".
 
 ## Display Options
 - **Text only** (default): just write the answer.
@@ -282,6 +282,11 @@ Return ONLY valid JSON. No markdown code blocks, no explanation outside JSON.
 # --------------------------------------------------------------------------
 # LLM call helper
 # --------------------------------------------------------------------------
+
+def _safe_markdown(text):
+    """Escape $ signs to prevent Streamlit LaTeX rendering."""
+    return text.replace("$", "\\$") if text else text
+
 
 def _llm_call(messages, max_tokens=1024):
     """Call OpenRouter and return the response content string."""
@@ -418,34 +423,41 @@ if not st.session_state.messages:
         unsafe_allow_html=True,
     )
 
-# Render chat history
-for msg in st.session_state.messages:
+# Render chat history — only show tables/charts for the last assistant message
+_last_visual_idx = None
+for i, msg in enumerate(st.session_state.messages):
+    if msg["role"] == "assistant" and (msg.get("dataframe") is not None or msg.get("chart_fig_data") is not None):
+        _last_visual_idx = i
+
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         if msg.get("content"):
-            st.markdown(msg["content"])
-        if msg.get("dataframe") is not None:
-            st.dataframe(
-                pd.DataFrame(msg["dataframe"]),
-                use_container_width=True,
-                hide_index=True,
-            )
-        if msg.get("chart_fig_data") is not None:
-            try:
-                spec = msg["chart_fig_data"]
-                cdf = pd.DataFrame(spec["data"])
-                if spec["type"] == "bar":
-                    fig = px.bar(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
-                elif spec["type"] == "line":
-                    fig = px.line(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
-                elif spec["type"] == "pie":
-                    fig = px.pie(cdf, names=spec["x"], values=spec["y"])
-                else:
-                    fig = None
-                if fig:
-                    style_fig(fig)
-                    st.plotly_chart(fig, use_container_width=True)
-            except Exception:
-                pass
+            st.markdown(_safe_markdown(msg["content"]))
+        # Only render tables/charts for the most recent visual response
+        if i == _last_visual_idx:
+            if msg.get("dataframe") is not None:
+                st.dataframe(
+                    pd.DataFrame(msg["dataframe"]),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            if msg.get("chart_fig_data") is not None:
+                try:
+                    spec = msg["chart_fig_data"]
+                    cdf = pd.DataFrame(spec["data"])
+                    if spec["type"] == "bar":
+                        fig = px.bar(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
+                    elif spec["type"] == "line":
+                        fig = px.line(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
+                    elif spec["type"] == "pie":
+                        fig = px.pie(cdf, names=spec["x"], values=spec["y"])
+                    else:
+                        fig = None
+                    if fig:
+                        style_fig(fig)
+                        st.plotly_chart(fig, use_container_width=True)
+                except Exception:
+                    pass
 
 # --------------------------------------------------------------------------
 # Handle new input
@@ -485,7 +497,7 @@ if prompt:
         # No query needed — direct reply
         if query_spec.get("no_query"):
             reply = query_spec.get("reply", "How can I help?")
-            st.markdown(reply)
+            st.markdown(_safe_markdown(reply))
             st.session_state.messages.append({
                 "role": "assistant", "content": reply,
             })
@@ -587,7 +599,7 @@ if prompt:
         chart_config = response.get("chart_config", {})
 
         if message:
-            st.markdown(message)
+            st.markdown(_safe_markdown(message))
 
         msg_data = {"role": "assistant", "content": message}
 

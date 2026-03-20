@@ -100,6 +100,22 @@ metric_row([
     ("All Time (90d)", format_cost(all_cost), f"{int(all_reqs)} requests"),
 ])
 
+# --- API provider breakdown ---
+if "api_type" in df.columns:
+    exa_mask = df["api_type"] == "exa"
+    exa_cost = df.loc[exa_mask, "total_cost"].sum()
+    openrouter_cost = df.loc[~exa_mask, "total_cost"].sum()
+    exa_reqs = df.loc[exa_mask, "request_count"].sum()
+    or_reqs = df.loc[~exa_mask, "request_count"].sum()
+
+    if exa_cost > 0:
+        st.divider()
+        st.subheader("By Provider")
+        metric_row([
+            ("OpenRouter", format_cost(openrouter_cost), f"{int(or_reqs)} requests"),
+            ("Exa Search", format_cost(exa_cost), f"{int(exa_reqs)} requests"),
+        ])
+
 st.divider()
 
 # --- Cost trend ---

@@ -31,6 +31,8 @@ WORKFLOW_NAMES = {
     "OPENROUTER_KEY_CHOP_SHOP": "Chop Shop",
     "OPENROUTER_KEY_STREAMLIT": "Streamlit Dashboard",
     "Streamlit Dashboard": "Streamlit Dashboard",
+    "EXA_CONFERENCE_SOURCING": "Exa: Conference Sourcing",
+    "EXA_DEAL_VALIDATION": "Exa: Deal Validation",
     "factory": "Default Key (factory)",
     "unknown": "Unknown",
 }

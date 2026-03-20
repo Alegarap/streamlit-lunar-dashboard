@@ -423,11 +423,41 @@ if not st.session_state.messages:
         unsafe_allow_html=True,
     )
 
-# Render chat history — text only (tables/charts rendered inline during response)
-for msg in st.session_state.messages:
+# Render chat history — only show tables/charts for the last assistant message
+_last_visual_idx = None
+for i, msg in enumerate(st.session_state.messages):
+    if msg["role"] == "assistant" and (msg.get("dataframe") is not None or msg.get("chart_fig_data") is not None):
+        _last_visual_idx = i
+
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         if msg.get("content"):
             st.markdown(_safe_markdown(msg["content"]))
+        # Only render tables/charts for the most recent visual response
+        if i == _last_visual_idx:
+            if msg.get("dataframe") is not None:
+                st.dataframe(
+                    pd.DataFrame(msg["dataframe"]),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            if msg.get("chart_fig_data") is not None:
+                try:
+                    spec = msg["chart_fig_data"]
+                    cdf = pd.DataFrame(spec["data"])
+                    if spec["type"] == "bar":
+                        fig = px.bar(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
+                    elif spec["type"] == "line":
+                        fig = px.line(cdf, x=spec["x"], y=spec["y"], color=spec.get("color"))
+                    elif spec["type"] == "pie":
+                        fig = px.pie(cdf, names=spec["x"], values=spec["y"])
+                    else:
+                        fig = None
+                    if fig:
+                        style_fig(fig)
+                        st.plotly_chart(fig, use_container_width=True)
+                except Exception:
+                    pass
 
 # --------------------------------------------------------------------------
 # Handle new input
@@ -595,10 +625,15 @@ if prompt:
                     style_fig(fig)
                     fig.update_layout(margin=dict(t=10))
                     st.plotly_chart(fig, use_container_width=True)
+                    msg_data["chart_fig_data"] = {
+                        "type": ct, "data": df.to_dict(orient="records"),
+                        "x": x, "y": y, "color": color,
+                    }
                 except Exception:
                     pass
 
         elif display == "table":
             st.dataframe(df, use_container_width=True, hide_index=True)
+            msg_data["dataframe"] = df.to_dict(orient="records")
 
         st.session_state.messages.append(msg_data)

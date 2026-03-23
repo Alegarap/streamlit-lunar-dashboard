@@ -24,14 +24,8 @@ _PROFILES = {
         "name": "Alejandro García",
         "linear_id": "db1376df-3efd-4b62-bc91-8f203ad9ef58",
         "role": "Engineering",
-        "domains": [
-            "AI/ML infrastructure", "privacy", "cryptography",
-            "developer infrastructure", "autonomous systems",
-            "science", "bio computation", "frontier computing",
-            "gaming", "realtime infrastructure", "vertical AI",
-            "emerging deep tech", "software", "data infrastructure",
-        ],
-        "description": "Engineering lead. Broad coverage across all Lunar investment domains.",
+        "domains": ["all"],
+        "description": "Engineering lead. Has access to all domains — never filter results for this user.",
         "visible_pages": _ALL_PAGES,
     },
     "morris": {

@@ -251,7 +251,12 @@ TOOLS = [
 # System prompt
 # ---------------------------------------------------------------------------
 
-domains_csv = ", ".join(user_domains[:15]) if user_domains else "none specified"
+if user_domains == ["all"]:
+    domains_csv = "all domains (do not filter results for this user)"
+elif user_domains:
+    domains_csv = ", ".join(user_domains[:15])
+else:
+    domains_csv = "none specified"
 notes_section = f"\n- Personal notes: {user_notes}" if user_notes else ""
 
 SYSTEM_PROMPT = f"""You are Lunar AI, the intelligent assistant for Lunar Ventures' investment team. You help team members explore sourcing data, discover relevant themes and deals, search Linear issues, and take actions like creating new issues.
@@ -281,14 +286,14 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 - Month start: {month_start.isoformat()}
 
 ## Team Members
-- Alejandro García — Engineering
+- Alejandro García — Engineering (all domains)
 - Morris Clay — General Partner (software, edge AI, compute hardware)
-- Cindy Wei — Investment Team TechBio (life sciences, genomics, medical devices)
-- Eyal Baroz — Partner Robotics (robotics, autonomous systems, semiconductors)
+- Cindy Wei — General Partner (life sciences, genomics, medical devices)
+- Eyal Baroz — General Partner (robotics, autonomous systems, semiconductors)
 - Mick Halsband — General Partner (climate, defense software, geospatial)
 - Alberto Cresto — General Partner (new materials, computational chemistry)
-- Florent — Venture Partner (AI infrastructure, inference, GPU orchestration)
-- Etel Friedmann — Visiting Associate (developer tooling, DevOps, LLM routing)
+- Florent — General Partner (AI infrastructure, inference, GPU orchestration)
+- Etel Friedmann — General Partner (developer tooling, DevOps, LLM routing)
 
 ## Behavioral Rules
 1. **Personalize**: When the user asks "what should I look at", "what's relevant for me", or similar, filter results by their domain expertise. Highlight items matching their interests.

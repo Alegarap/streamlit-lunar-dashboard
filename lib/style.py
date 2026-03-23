@@ -217,7 +217,7 @@ def _resolve_profile():
         st.session_state["user_profile"] = profile
         return profile
 
-    profile = get_profile(email, fallback_name=name)
+    profile = get_profile(email.strip(), fallback_name=name)
 
     # Try to merge Supabase user_preferences (extra_domains, notes)
     try:

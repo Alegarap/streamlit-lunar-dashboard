@@ -4,6 +4,8 @@ Provides search, get, and create operations for Linear issues.
 Uses the n8n_agent API key (bot-attributed).
 """
 
+from __future__ import annotations
+
 import json
 import os
 import urllib.request

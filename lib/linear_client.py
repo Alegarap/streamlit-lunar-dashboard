@@ -83,8 +83,8 @@ def search_issues(query: str, team: str | None = None, limit: int = 10) -> list[
         team_filter = f', filter: {{ team: {{ id: {{ eq: "{TEAMS[team]}" }} }} }}'
 
     gql = f"""
-    query SearchIssues($query: String!, $limit: Int!) {{
-      searchIssues(query: $query, first: $limit{team_filter}) {{
+    query SearchIssues($term: String!, $limit: Int!) {{
+      searchIssues(term: $term, first: $limit{team_filter}) {{
         nodes {{
           id
           identifier
@@ -99,7 +99,7 @@ def search_issues(query: str, team: str | None = None, limit: int = 10) -> list[
       }}
     }}
     """
-    data = _graphql(gql, {"query": query, "limit": limit})
+    data = _graphql(gql, {"term": query, "limit": limit})
     if "error" in data:
         return [{"error": data["error"]}]
 
@@ -123,39 +123,36 @@ def search_issues(query: str, team: str | None = None, limit: int = 10) -> list[
 def get_issue(identifier: str) -> dict:
     """Get full details of a Linear issue by identifier (e.g. THE-1234).
 
+    Uses the `issue(id:)` query which accepts identifiers like "ENG-263".
     Returns {id, identifier, title, description, state, assignee, labels, url, comments}.
     """
     gql = """
-    query GetIssue($filter: IssueFilter!) {
-      issues(filter: $filter, first: 1) {
-        nodes {
-          id
-          identifier
-          title
-          description
-          url
-          state { name }
-          assignee { name }
-          labels { nodes { name } }
-          comments(first: 5) {
-            nodes { body user { name } createdAt }
-          }
-          createdAt
-          updatedAt
+    query GetIssue($id: String!) {
+      issue(id: $id) {
+        id
+        identifier
+        title
+        description
+        url
+        state { name }
+        assignee { name }
+        labels { nodes { name } }
+        comments(first: 5) {
+          nodes { body user { name } createdAt }
         }
+        createdAt
+        updatedAt
       }
     }
     """
-    # Parse identifier like "THE-1234" → team prefix + number
-    data = _graphql(gql, {"filter": {"identifier": {"eq": identifier}}})
+    data = _graphql(gql, {"id": identifier})
     if "error" in data:
         return {"error": data["error"]}
 
-    nodes = data.get("issues", {}).get("nodes", [])
-    if not nodes:
+    n = data.get("issue")
+    if not n:
         return {"error": f"Issue {identifier} not found"}
 
-    n = nodes[0]
     return {
         "id": n["id"],
         "identifier": n["identifier"],

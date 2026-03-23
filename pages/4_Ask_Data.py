@@ -344,7 +344,7 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 8. **p_days reference**: today=0, yesterday=1, last 7 days=6, this week={max(0, (today - week_start).days)}, this month={max(0, (today - month_start).days)}, last 30 days=29.
 9. **Preferences**: When the user expresses interest in new topics or asks you to remember something, use update_user_preferences to persist it.
 10. **Pre-aggregate cost/ingestion data**: When presenting cost or ingestion totals, sum the data yourself from the query results. State the totals explicitly.
-11. **Creating issues from items**: When creating a Linear issue from a Supabase item, use the item's existing title and description/summary. Pass the item's source_labels as label_names (e.g. "Academic Sourcing" for arxiv, "Hacker News" for HN, "Conference" for conferences). The "Lunar Dashboard" label is always added automatically.
+11. **Creating issues from items**: When creating a Linear issue from a Supabase item, use the item's existing title and description/summary. Pass the item's source_labels as label_names (e.g. "Academic Sourcing" for arxiv, "Hacker News" for HN, "Conference" for conferences). The "Lunar Dashboard" label is always added automatically. Always assign the issue to the current user (use their Linear user ID: {user_linear_id}) unless they specify someone else.
 12. **Updating issues**: You can update existing Linear issues — change title, description, state, assignee, add labels, or post comments. Use the update_linear_issue tool.
 """
 

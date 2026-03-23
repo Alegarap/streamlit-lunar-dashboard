@@ -166,7 +166,10 @@ TOOLS = [
         "description": (
             "Create a new Linear issue. IMPORTANT: Always describe what you're about to create "
             "and ask the user to confirm BEFORE calling this tool. Never create without confirmation.\n"
-            "Teams: THE for themes/technology trends, DEAL for startup deals."
+            "Teams: THE for themes/technology trends, DEAL for startup deals.\n"
+            "When creating from a Supabase item, use the item's title and description as-is.\n"
+            "The 'Lunar Dashboard' label is automatically added. Pass any source labels "
+            "(e.g. 'Academic Sourcing', 'Hacker News', 'Conference') in label_names."
         ),
         "input_schema": {
             "type": "object",
@@ -176,14 +179,49 @@ TOOLS = [
                     "enum": ["THE", "DEAL"],
                     "description": "Target team",
                 },
-                "title": {"type": "string", "description": "Issue title"},
-                "description": {"type": "string", "description": "Issue description (markdown)"},
+                "title": {"type": "string", "description": "Issue title — use the item's existing title"},
+                "description": {"type": "string", "description": "Issue description (markdown) — use the item's existing description/summary"},
                 "assignee_id": {
                     "type": "string",
                     "description": "Linear user UUID to assign (optional)",
                 },
+                "label_names": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Label names to add (e.g. ['Academic Sourcing', 'Hacker News']). 'Lunar Dashboard' is always added automatically.",
+                },
             },
             "required": ["team", "title", "description"],
+        },
+    },
+    {
+        "name": "update_linear_issue",
+        "description": (
+            "Update an existing Linear issue. Can change title, description, state, assignee, "
+            "add labels, or post a comment. Provide the issue identifier (e.g. THE-1234)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "issue_id": {
+                    "type": "string",
+                    "description": "Issue identifier (e.g. THE-1234) or UUID",
+                },
+                "title": {"type": "string", "description": "New title (optional)"},
+                "description": {"type": "string", "description": "New description (optional)"},
+                "assignee_id": {"type": "string", "description": "New assignee Linear user UUID (optional)"},
+                "state_name": {
+                    "type": "string",
+                    "description": "New state name, e.g. 'In Progress', 'Done', 'Cancelled', 'Backlog' (optional)",
+                },
+                "add_label_names": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Label names to add (optional)",
+                },
+                "comment": {"type": "string", "description": "Comment to post on the issue (optional)"},
+            },
+            "required": ["issue_id"],
         },
     },
     {
@@ -300,12 +338,14 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 2. **Be concise**: Lead with the key finding or number. Write like you're talking to a colleague.
 3. **Use tools**: Query data before answering factual questions. Don't guess numbers.
 4. **Multi-step**: You can call multiple tools to answer complex questions. E.g., query Supabase for items, then search Linear for related issues.
-5. **Confirmation for writes**: Before calling create_linear_issue, always tell the user what you plan to create and ask them to confirm. Only call the tool after they say yes.
+5. **Confirmation for writes**: Before calling create_linear_issue or update_linear_issue, always tell the user what you plan to do and ask them to confirm. Only call the tool after they say yes.
 6. **Cost formatting**: Use "USD" not "$" (Streamlit renders $ as LaTeX).
 7. **Tables and charts**: Use show_table for lists of items/issues. Use show_chart for trends over time. Don't use them for single values.
 8. **p_days reference**: today=0, yesterday=1, last 7 days=6, this week={max(0, (today - week_start).days)}, this month={max(0, (today - month_start).days)}, last 30 days=29.
 9. **Preferences**: When the user expresses interest in new topics or asks you to remember something, use update_user_preferences to persist it.
 10. **Pre-aggregate cost/ingestion data**: When presenting cost or ingestion totals, sum the data yourself from the query results. State the totals explicitly.
+11. **Creating issues from items**: When creating a Linear issue from a Supabase item, use the item's existing title and description/summary. Pass the item's source_labels as label_names (e.g. "Academic Sourcing" for arxiv, "Hacker News" for HN, "Conference" for conferences). The "Lunar Dashboard" label is always added automatically.
+12. **Updating issues**: You can update existing Linear issues — change title, description, state, assignee, add labels, or post comments. Use the update_linear_issue tool.
 """
 
 # ---------------------------------------------------------------------------
@@ -443,6 +483,19 @@ def _execute_tool(name, args):
                 title=args["title"],
                 description=args["description"],
                 assignee_id=args.get("assignee_id"),
+                label_names=args.get("label_names"),
+            )
+            return json.dumps(result, default=str)
+
+        elif name == "update_linear_issue":
+            result = lc.update_issue(
+                issue_id=args["issue_id"],
+                title=args.get("title"),
+                description=args.get("description"),
+                assignee_id=args.get("assignee_id"),
+                state_name=args.get("state_name"),
+                add_label_names=args.get("add_label_names"),
+                comment=args.get("comment"),
             )
             return json.dumps(result, default=str)
 

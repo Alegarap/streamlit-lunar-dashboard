@@ -1,0 +1,141 @@
+"""User profiles for Lunar Ventures team members.
+
+Maps logged-in email → profile with role, domains, page visibility.
+Base profiles are static; user-customizable preferences live in Supabase
+(user_preferences table) and are merged at runtime by style.apply().
+"""
+
+# ---------------------------------------------------------------------------
+# Base profiles derived from scripts/reviewer_profiles.json
+# ---------------------------------------------------------------------------
+
+_PROFILES = {
+    "alejandro": {
+        "name": "Alejandro García",
+        "linear_id": "db1376df-3efd-4b62-bc91-8f203ad9ef58",
+        "role": "Engineering",
+        "domains": [
+            "AI/ML infrastructure", "privacy", "cryptography",
+            "developer infrastructure", "autonomous systems",
+            "science", "bio computation", "frontier computing",
+            "gaming", "realtime infrastructure", "vertical AI",
+            "emerging deep tech", "software", "data infrastructure",
+        ],
+        "description": "Engineering lead. Broad coverage across all Lunar investment domains.",
+        "visible_pages": ["Home", "Ingestion", "Cost Tracking", "Clusters", "Ask AI"],
+    },
+    "morris": {
+        "name": "Morris Clay",
+        "linear_id": "9ba1f3c5-ee1e-43ed-bdf1-66d57b3147c3",
+        "role": "General Partner",
+        "domains": [
+            "software", "data infrastructure", "edge AI", "compute hardware",
+            "networking", "cooling", "new compute primitives", "health-tech",
+            "AI infrastructure", "AI security",
+        ],
+        "description": "Software engineer & founder, 15+ years in ML/AI. Covers software/data, edge AI, compute hardware, networking, cooling, new compute primitives.",
+        "visible_pages": ["Home", "Ingestion", "Cost Tracking", "Clusters", "Ask AI"],
+    },
+    "cindy": {
+        "name": "Cindy Wei",
+        "linear_id": "67e0f105-bd7d-4123-8152-79e043b4d1af",
+        "role": "Investment Team - TechBio",
+        "domains": [
+            "life sciences", "genomics", "proteomics", "spatial biology",
+            "organoids", "bioinformatics", "medical devices", "drug discovery",
+            "cancer", "pharma", "clinical AI", "bioprocess", "metabolic",
+            "pathology", "biomarker", "medical imaging",
+        ],
+        "description": "Bioinformatician and cancer biologist. Covers all bio/life sciences themes.",
+        "visible_pages": ["Home", "Clusters", "Ask AI"],
+    },
+    "eyal": {
+        "name": "Eyal Baroz",
+        "linear_id": "6c67447c-159c-4b77-af40-b45faf46aba9",
+        "role": "Partner - Robotics",
+        "domains": [
+            "robotic", "autonomous vehicle", "autonomous navigation", "drone",
+            "teleoperation", "manipulation", "embodied AI", "defense hardware",
+            "semiconductor", "chiplet", "chip design", "humanoid robot",
+            "multi-robot", "spacecraft",
+        ],
+        "description": "25+ years in semiconductors, robotics, defense, telecom. Covers all robotics and autonomous systems.",
+        "visible_pages": ["Home", "Clusters", "Ask AI"],
+    },
+    "mick": {
+        "name": "Mick Halsband",
+        "linear_id": "5f299ecd-e5a3-4ff8-92cf-bc30b847bc64",
+        "role": "General Partner",
+        "domains": [
+            "climate", "resilience", "defense software", "geospatial",
+            "satellite", "agriculture", "disaster management", "new materials",
+        ],
+        "description": "CTO background in mission-critical systems. Covers climate/resilience, defense (software side), satellite/geospatial.",
+        "visible_pages": ["Home", "Clusters", "Ask AI"],
+    },
+    "alberto": {
+        "name": "Alberto Cresto",
+        "linear_id": "33249564-9934-485a-8f5a-3cae6d3a597e",
+        "role": "General Partner",
+        "domains": [
+            "new materials", "computational chemistry", "advanced manufacturing",
+        ],
+        "description": "40+ deep tech investments across industries. Primary for new materials, catch-all for unmatched topics.",
+        "visible_pages": ["Home", "Clusters", "Ask AI"],
+    },
+    "florent": {
+        "name": "Florent",
+        "linear_id": "2d4380e4-1894-4ee8-95c8-f07815d22bd8",
+        "role": "Venture Partner",
+        "domains": [
+            "AI infrastructure", "inference", "model serving", "GPU orchestration",
+            "cloud ML", "MLOps", "data centers", "AI security",
+            "privacy-preserving computation", "LLM infrastructure",
+        ],
+        "description": "Infrastructure software growth investor. AI infrastructure, inference/serving, GPU orchestration.",
+        "visible_pages": ["Home", "Clusters", "Ask AI"],
+    },
+    "etel": {
+        "name": "Etel Friedmann",
+        "linear_id": "64f45344-5b52-43b4-bb97-923665f35870",
+        "role": "Visiting Associate - Infra",
+        "domains": [
+            "developer tooling", "DevOps", "LLM routing", "release orchestration",
+            "CI/CD", "platform engineering", "AI agents", "AI security",
+            "LLM infrastructure",
+        ],
+        "description": "10+ years scaling developer-focused infra startups. Developer tooling, DevOps, LLM routing.",
+        "visible_pages": ["Home", "Clusters", "Ask AI"],
+    },
+}
+
+# Default for authenticated Lunar emails without a specific profile
+_DEFAULT_PROFILE = {
+    "name": None,  # filled from st.user.name at runtime
+    "linear_id": None,
+    "role": "Team Member",
+    "domains": [],
+    "description": "",
+    "visible_pages": ["Home", "Clusters", "Ask AI"],
+}
+
+# Build lookup: email → profile (both @lunarventures.eu and @lunar.vc)
+_EMAIL_MAP: dict[str, dict] = {}
+for _key, _prof in _PROFILES.items():
+    _EMAIL_MAP[f"{_key}@lunarventures.eu"] = _prof
+    _EMAIL_MAP[f"{_key}@lunar.vc"] = _prof
+
+
+def get_profile(email: str, fallback_name: str | None = None) -> dict:
+    """Look up a user profile by email.
+
+    Returns the matching profile or a default profile for unknown Lunar emails.
+    The returned dict is a copy safe to mutate (e.g., merging extra_domains).
+    """
+    profile = _EMAIL_MAP.get(email.lower())
+    if profile:
+        return dict(profile)
+    # Unknown email — return default with name filled in
+    result = dict(_DEFAULT_PROFILE)
+    result["name"] = fallback_name or email.split("@")[0].title()
+    return result

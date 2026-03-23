@@ -8,6 +8,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from lib.user_profiles import get_profile
+
 # ---------------------------------------------------------------------------
 # CSS
 # ---------------------------------------------------------------------------
@@ -179,6 +181,68 @@ def require_auth():
 
 
 # ---------------------------------------------------------------------------
+# Profile resolution
+# ---------------------------------------------------------------------------
+
+# Page registry: label → (file_path, icon)
+_ALL_PAGES = {
+    "Home": ("app.py", "🏠"),
+    "Ingestion": ("pages/1_Ingestion.py", "📊"),
+    "Cost Tracking": ("pages/2_Cost_Tracking.py", "💰"),
+    "Clusters": ("pages/3_Clusters.py", "🔬"),
+    "Ask AI": ("pages/4_Ask_Data.py", "✨"),
+}
+
+
+def _resolve_profile():
+    """Resolve logged-in user's profile and store in session state.
+
+    Merges base profile with any user_preferences from Supabase.
+    """
+    if "user_profile" in st.session_state:
+        return st.session_state["user_profile"]
+
+    email = ""
+    name = ""
+    try:
+        if st.user.is_logged_in:
+            email = st.user.email or ""
+            name = st.user.name or ""
+    except AttributeError:
+        pass
+
+    if not email:
+        # Bypass mode or not logged in — default profile
+        profile = get_profile("", fallback_name="Guest")
+        st.session_state["user_profile"] = profile
+        return profile
+
+    profile = get_profile(email, fallback_name=name)
+
+    # Try to merge Supabase user_preferences (extra_domains, notes)
+    try:
+        from lib import supabase_client as sb
+        prefs = sb.query_fresh("user_preferences", {
+            "email": f"eq.{email.lower()}",
+            "limit": "1",
+        })
+        if prefs:
+            pref = prefs[0]
+            extra = pref.get("extra_domains") or []
+            if extra:
+                profile["domains"] = list(profile["domains"]) + [
+                    d for d in extra if d not in profile["domains"]
+                ]
+            profile["notes"] = pref.get("notes", "")
+            profile["hidden_sources"] = pref.get("hidden_sources") or []
+    except Exception:
+        pass  # Supabase unavailable — use base profile
+
+    st.session_state["user_profile"] = profile
+    return profile
+
+
+# ---------------------------------------------------------------------------
 # Main apply function
 # ---------------------------------------------------------------------------
 
@@ -186,6 +250,10 @@ def apply():
     """Auth gate + CSS + sidebar. Call once per page."""
     require_auth()
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+    # Resolve user profile
+    profile = _resolve_profile()
+    visible = profile.get("visible_pages", list(_ALL_PAGES.keys()))
 
     # Sidebar: logo + nav + user info
     with st.sidebar:
@@ -210,16 +278,21 @@ def apply():
             unsafe_allow_html=True,
         )
         st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
-        st.page_link("app.py", label="Home", icon="🏠")
-        st.page_link("pages/1_Ingestion.py", label="Ingestion", icon="📊")
-        st.page_link("pages/2_Cost_Tracking.py", label="Cost Tracking", icon="💰")
-        st.page_link("pages/3_Clusters.py", label="Clusters", icon="🔬")
-        st.page_link("pages/4_Ask_Data.py", label="Ask AI", icon="✨")
+
+        # Conditional page links based on user profile
+        for page_label, (page_file, page_icon) in _ALL_PAGES.items():
+            if page_label in visible:
+                st.page_link(page_file, label=page_label, icon=page_icon)
 
         st.divider()
         try:
             if st.user.is_logged_in:
-                st.caption(f"Signed in as {st.user.name}")
+                display_name = profile.get("name") or st.user.name
+                role = profile.get("role", "")
+                if role:
+                    st.caption(f"Signed in as {display_name} · {role}")
+                else:
+                    st.caption(f"Signed in as {display_name}")
                 if st.button("Sign out", use_container_width=True):
                     st.logout()
         except AttributeError:

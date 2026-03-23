@@ -225,6 +225,21 @@ TOOLS = [
         },
     },
     {
+        "name": "relate_linear_issues",
+        "description": (
+            "Create a 'related' link between two Linear issues. "
+            "Use after creating a theme and its associated deal to link them together."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "issue_id_1": {"type": "string", "description": "First issue identifier (e.g. THE-1234) or UUID"},
+                "issue_id_2": {"type": "string", "description": "Second issue identifier (e.g. DEAL-567) or UUID"},
+            },
+            "required": ["issue_id_1", "issue_id_2"],
+        },
+    },
+    {
         "name": "show_table",
         "description": "Display data as an interactive table in the dashboard. Use when presenting lists or detailed breakdowns.",
         "input_schema": {
@@ -346,7 +361,7 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 10. **Pre-aggregate cost/ingestion data**: When presenting cost or ingestion totals, sum the data yourself from the query results. State the totals explicitly.
 11. **Creating issues from items**: When creating a Linear issue from a Supabase item, use the item's existing title and description/summary. Pass the item's source_labels as label_names (e.g. "Academic Sourcing" for arxiv, "Hacker News" for HN, "Conference" for conferences). The "Lunar Dashboard" label is always added automatically. Always assign the issue to the current user (use their Linear user ID: {user_linear_id}) unless they specify someone else.
 13. **Arxiv (Academic Sourcing) items**: When creating Linear issues from arxiv items, ALWAYS prepend the scroll emoji to the title: "📜 Original Title". This applies to both themes (THE) and deals (DEAL).
-14. **Arxiv theme → deal bundle**: When creating a THE issue from an arxiv theme, also look up related deals in Supabase by matching `metadata->>arxiv_id`. The theme's `metadata.authors` array lists authors — the first author is the main author. Find the deal with that author's name as title and create it as a DEAL issue too (also with 📜 prefix, same title and description from Supabase). Always inform the user which deal(s) you're creating alongside the theme.
+14. **Arxiv theme → deal bundle**: When creating a THE issue from an arxiv theme, also look up related deals in Supabase by matching `metadata->>arxiv_id`. The theme's `metadata.authors` array lists authors — the first author is the main author. Find the deal with that author's name as title and create it as a DEAL issue too (also with 📜 prefix, same title and description from Supabase). After creating both, use relate_linear_issues to link the theme and deal as related issues. Always inform the user which deal(s) you're creating alongside the theme.
 12. **Updating issues**: You can update existing Linear issues — change title, description, state, assignee, add labels, or post comments. Use the update_linear_issue tool.
 """
 
@@ -498,6 +513,13 @@ def _execute_tool(name, args):
                 state_name=args.get("state_name"),
                 add_label_names=args.get("add_label_names"),
                 comment=args.get("comment"),
+            )
+            return json.dumps(result, default=str)
+
+        elif name == "relate_linear_issues":
+            result = lc.relate_issues(
+                issue_id_1=args["issue_id_1"],
+                issue_id_2=args["issue_id_2"],
             )
             return json.dumps(result, default=str)
 

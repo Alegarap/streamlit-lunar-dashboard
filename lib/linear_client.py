@@ -391,6 +391,45 @@ def update_issue(
     return result_data if result_data else {"error": "Nothing to update — provide at least one field"}
 
 
+def relate_issues(issue_id_1: str, issue_id_2: str) -> dict:
+    """Create a 'related' link between two Linear issues.
+
+    Args:
+        issue_id_1: First issue ID (UUID) or identifier (e.g. "THE-1234")
+        issue_id_2: Second issue ID (UUID) or identifier (e.g. "DEAL-567")
+
+    Returns {success: true} or {error: ...}.
+    """
+    # Resolve identifiers to UUIDs if needed
+    for label, val in [("issue_id_1", issue_id_1), ("issue_id_2", issue_id_2)]:
+        if "-" in val and not _is_uuid(val):
+            issue_data = get_issue(val)
+            if "error" in issue_data:
+                return {"error": f"Could not resolve {val}: {issue_data['error']}"}
+            if label == "issue_id_1":
+                issue_id_1 = issue_data["id"]
+            else:
+                issue_id_2 = issue_data["id"]
+
+    gql = """
+    mutation RelateIssues($input: IssueRelationCreateInput!) {
+      issueRelationCreate(input: $input) {
+        success
+      }
+    }
+    """
+    data = _graphql(gql, {"input": {
+        "issueId": issue_id_1,
+        "relatedIssueId": issue_id_2,
+        "type": "related",
+    }})
+    if "error" in data:
+        return {"error": data["error"]}
+
+    result = data.get("issueRelationCreate", {})
+    return {"success": True} if result.get("success") else {"error": "Failed to relate issues"}
+
+
 def _is_uuid(s: str) -> bool:
     """Check if string looks like a UUID."""
     parts = s.split("-")

@@ -13,21 +13,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-try:
-    from streamlit_extras.dataframe_explorer import dataframe_explorer
-except ImportError:
-    dataframe_explorer = None
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import COLORS, SOURCE_ORDER, metric_row, style_fig
+from lib.charts import COLORS, SOURCE_ORDER, style_fig
 
 style.apply()
-st.markdown(
-    '<style>[data-testid="stMetricValue"] { color: #F4A7C8 !important; }</style>',
-    unsafe_allow_html=True,
-)
 st.title("Ingestion Dashboard")
 
 with st.sidebar:
@@ -39,6 +30,7 @@ with st.sidebar:
 # --- Fetch data ---
 with st.spinner("Loading ingestion data..."):
     raw = sb.rpc_fresh("get_ingestion_stats", {"p_days": 180})
+
 if not raw:
     st.warning("No ingestion data returned from Supabase.")
     st.stop()
@@ -73,48 +65,109 @@ today_stats = sum_period([today_str])
 yesterday_stats = sum_period([(today - timedelta(days=1)).isoformat()])
 
 last_monday = today - timedelta(days=today.weekday())
-week_dates = [(last_monday + timedelta(days=i)).isoformat()
-              for i in range((today - last_monday).days + 1)]
+week_dates = [
+    (last_monday + timedelta(days=i)).isoformat()
+    for i in range((today - last_monday).days + 1)
+]
 week_stats = sum_period(week_dates)
 
 prev_monday = last_monday - timedelta(weeks=1)
 prev_week_dates = [(prev_monday + timedelta(days=i)).isoformat() for i in range(7)]
 prev_week_stats = sum_period(prev_week_dates)
 
-# --- Scorecards ---
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("Today")
-    td = today_stats
-    yd = yesterday_stats
-    metric_row([
-        ("Themes", td["themes"],
-         f"{td['themes'] - yd['themes']:+d}" if td["themes"] != yd["themes"] else None),
-        ("Deals", td["deals"],
-         f"{td['deals'] - yd['deals']:+d}" if td["deals"] != yd["deals"] else None),
-        ("Total", td["total"],
-         f"{td['total'] - yd['total']:+d}" if td["total"] != yd["total"] else None),
-    ])
-with col2:
-    st.subheader("This Week")
-    ws = week_stats
-    pw = prev_week_stats
-    metric_row([
-        ("Themes", ws["themes"],
-         f"{ws['themes'] - pw['themes']:+d}" if ws["themes"] != pw["themes"] else None),
-        ("Deals", ws["deals"],
-         f"{ws['deals'] - pw['deals']:+d}" if ws["deals"] != pw["deals"] else None),
-        ("Total", ws["total"],
-         f"{ws['total'] - pw['total']:+d}" if ws["total"] != pw["total"] else None),
-    ])
+# ---------------------------------------------------------------------------
+# Scorecards — single row of 6
+# ---------------------------------------------------------------------------
+td = today_stats
+yd = yesterday_stats
+ws = week_stats
+pw = prev_week_stats
 
-# --- Source breakdown charts ---
+c1, c2, c3, c4, c5, c6 = st.columns(6)
+c1.metric(
+    "Today Themes", td["themes"],
+    f"{td['themes'] - yd['themes']:+d}" if td["themes"] != yd["themes"] else None,
+)
+c2.metric(
+    "Today Deals", td["deals"],
+    f"{td['deals'] - yd['deals']:+d}" if td["deals"] != yd["deals"] else None,
+)
+c3.metric(
+    "Today Total", td["total"],
+    f"{td['total'] - yd['total']:+d}" if td["total"] != yd["total"] else None,
+)
+c4.metric(
+    "Week Themes", ws["themes"],
+    f"{ws['themes'] - pw['themes']:+d}" if ws["themes"] != pw["themes"] else None,
+)
+c5.metric(
+    "Week Deals", ws["deals"],
+    f"{ws['deals'] - pw['deals']:+d}" if ws["deals"] != pw["deals"] else None,
+)
+c6.metric(
+    "Week Total", ws["total"],
+    f"{ws['total'] - pw['total']:+d}" if ws["total"] != pw["total"] else None,
+)
+
+# Date-range caption
+week_start_str = last_monday.strftime("%b %d")
+today_display = today.strftime("%b %d, %Y")
+st.caption(
+    f"Today: {today_display}  \u00b7  "
+    f"This week: {week_start_str} \u2013 {today_display}  \u00b7  "
+    f"Previous week: {prev_monday.strftime('%b %d')} \u2013 "
+    f"{(prev_monday + timedelta(days=6)).strftime('%b %d')}"
+)
+
+# ---------------------------------------------------------------------------
+# Chart styling helper
+# ---------------------------------------------------------------------------
+
+_CHART_LEGEND = dict(
+    orientation="h",
+    yanchor="bottom",
+    y=1.02,
+    xanchor="left",
+    x=0,
+    font=dict(size=13, family="DM Sans"),
+)
+
+
+def _polish_chart(fig, title: str):
+    """Apply consistent styling to an ingestion chart."""
+    style_fig(fig)
+    fig.update_layout(
+        title=dict(
+            text=title,
+            font=dict(size=16, family="DM Sans", color="white"),
+            x=0.01,
+            y=0.95,
+        ),
+        legend=_CHART_LEGEND,
+        height=400,
+        xaxis_title=None,
+        yaxis_title="Items",
+        yaxis_title_font=dict(size=13, family="DM Sans"),
+        xaxis_tickfont=dict(size=12, family="DM Sans"),
+        yaxis_tickfont=dict(size=12, family="DM Sans"),
+    )
+    fig.update_traces(textposition="none")
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Source breakdown charts — tabs
+# ---------------------------------------------------------------------------
 st.divider()
-tab_daily, tab_weekly, tab_monthly = st.tabs(["Daily (30d)", "Weekly (12w)", "Monthly (6m)"])
+tab_daily, tab_weekly, tab_monthly = st.tabs([
+    "Daily  (30 days)",
+    "Weekly  (12 weeks)",
+    "Monthly  (6 months)",
+])
 
 with tab_daily:
     rows = []
-    for i in range(29, -1, -1):  # oldest first for correct chart ordering
+    for i in range(29, -1, -1):
         d = today - timedelta(days=i)
         ds = d.isoformat()
         for src in SOURCE_ORDER:
@@ -125,34 +178,34 @@ with tab_daily:
         df, x="Date", y="Items", color="Source",
         color_discrete_map=COLORS,
         category_orders={"Source": SOURCE_ORDER},
-        title="Daily Ingestion by Source",
     )
     fig.update_layout(barmode="stack", xaxis_tickformat="%b %d")
-    style_fig(fig)
+    _polish_chart(fig, "Daily Ingestion by Source")
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_weekly:
     rows = []
-    for w in range(11, -1, -1):  # oldest first
-        ws = last_monday - timedelta(weeks=w)
-        dates = [(ws + timedelta(days=i)).isoformat() for i in range(7)]
+    for w in range(11, -1, -1):
+        ws_start = last_monday - timedelta(weeks=w)
+        dates = [(ws_start + timedelta(days=i)).isoformat() for i in range(7)]
         for src in SOURCE_ORDER:
-            count = sum(by_day[ds][src]["theme"] + by_day[ds][src]["deal"] for ds in dates)
-            rows.append({"Week": ws, "Source": src, "Items": count})
+            count = sum(
+                by_day[ds][src]["theme"] + by_day[ds][src]["deal"] for ds in dates
+            )
+            rows.append({"Week": ws_start, "Source": src, "Items": count})
     df = pd.DataFrame(rows)
     fig = px.bar(
         df, x="Week", y="Items", color="Source",
         color_discrete_map=COLORS,
         category_orders={"Source": SOURCE_ORDER},
-        title="Weekly Ingestion by Source",
     )
     fig.update_layout(barmode="stack", xaxis_tickformat="%b %d")
-    style_fig(fig)
+    _polish_chart(fig, "Weekly Ingestion by Source")
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_monthly:
     rows = []
-    for m in range(5, -1, -1):  # oldest first
+    for m in range(5, -1, -1):
         month = today.month - m
         year = today.year
         while month <= 0:
@@ -161,28 +214,34 @@ with tab_monthly:
         label = f"{year}-{month:02d}"
         dates = [ds for ds in by_day if ds.startswith(label)]
         for src in SOURCE_ORDER:
-            count = sum(by_day[ds][src]["theme"] + by_day[ds][src]["deal"] for ds in dates)
+            count = sum(
+                by_day[ds][src]["theme"] + by_day[ds][src]["deal"] for ds in dates
+            )
             rows.append({"Month": label, "Source": src, "Items": count})
     df = pd.DataFrame(rows)
     fig = px.bar(
         df, x="Month", y="Items", color="Source",
         color_discrete_map=COLORS,
         category_orders={"Source": SOURCE_ORDER},
-        title="Monthly Ingestion by Source",
     )
     fig.update_layout(barmode="stack")
-    style_fig(fig)
+    _polish_chart(fig, "Monthly Ingestion by Source")
     st.plotly_chart(fig, use_container_width=True)
 
-# --- Latest items table ---
+# ---------------------------------------------------------------------------
+# Latest items table
+# ---------------------------------------------------------------------------
 st.divider()
 st.subheader("Latest Items")
+
 try:
-    latest = sb.query_fresh("items", {
-        "select": "created_at,source,type,title",
-        "order": "created_at.desc",
-        "limit": "100",
-    })
+    with st.spinner("Loading latest items..."):
+        latest = sb.query_fresh("items", {
+            "select": "created_at,source,type,title",
+            "order": "created_at.desc",
+            "limit": "100",
+        })
+
     if latest:
         df_latest = pd.DataFrame(latest)
         df_latest["created_at"] = pd.to_datetime(
@@ -194,11 +253,33 @@ try:
             "type": "Type",
             "title": "Title",
         })
-        if dataframe_explorer is not None:
-            filtered = dataframe_explorer(df_latest, case=False)
-            st.dataframe(filtered, use_container_width=True, hide_index=True)
+
+        # Source filter
+        available_sources = sorted(df_latest["Source"].dropna().unique().tolist())
+        selected_sources = st.multiselect(
+            "Filter by source",
+            options=available_sources,
+            default=available_sources,
+            key="ingestion_source_filter",
+        )
+
+        if selected_sources:
+            df_filtered = df_latest[df_latest["Source"].isin(selected_sources)]
         else:
-            st.dataframe(df_latest, use_container_width=True, hide_index=True)
+            df_filtered = df_latest
+
+        st.dataframe(
+            df_filtered,
+            use_container_width=True,
+            hide_index=True,
+            height=400,
+            column_config={
+                "Source": st.column_config.TextColumn("Source", width="small"),
+                "Type": st.column_config.TextColumn("Type", width="small"),
+                "Created": st.column_config.TextColumn("Created", width="medium"),
+                "Title": st.column_config.TextColumn("Title", width="large"),
+            },
+        )
     else:
         st.info("No items found.")
 except Exception as e:

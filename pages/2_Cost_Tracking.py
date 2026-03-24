@@ -16,13 +16,9 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.charts import format_cost, metric_row, style_fig, workflow_display_name
+from lib.charts import format_cost, style_fig, workflow_display_name
 
 style.apply()
-st.markdown(
-    '<style>[data-testid="stMetricValue"] { color: #A7F3D0 !important; }</style>',
-    unsafe_allow_html=True,
-)
 st.title("Cost Tracking")
 
 with st.sidebar:
@@ -64,11 +60,17 @@ df = pd.DataFrame(cost_data)
 df["day"] = pd.to_datetime(df["day"])
 df["total_cost"] = pd.to_numeric(df["total_cost"], errors="coerce").fillna(0)
 if "total_input_tokens" in df.columns:
-    df["total_input_tokens"] = pd.to_numeric(df["total_input_tokens"], errors="coerce").fillna(0).astype(int)
+    df["total_input_tokens"] = (
+        pd.to_numeric(df["total_input_tokens"], errors="coerce").fillna(0).astype(int)
+    )
 if "total_output_tokens" in df.columns:
-    df["total_output_tokens"] = pd.to_numeric(df["total_output_tokens"], errors="coerce").fillna(0).astype(int)
+    df["total_output_tokens"] = (
+        pd.to_numeric(df["total_output_tokens"], errors="coerce").fillna(0).astype(int)
+    )
 if "request_count" in df.columns:
-    df["request_count"] = pd.to_numeric(df["request_count"], errors="coerce").fillna(0).astype(int)
+    df["request_count"] = (
+        pd.to_numeric(df["request_count"], errors="coerce").fillna(0).astype(int)
+    )
 else:
     df["request_count"] = 1
 
@@ -92,72 +94,93 @@ week_start = today - timedelta(days=today.weekday())
 week_cost, week_reqs = cost_for_period(week_start)
 month_start = today.replace(day=1)
 month_cost, month_reqs = cost_for_period(month_start)
-all_cost, all_reqs = df["total_cost"].sum(), df["request_count"].sum()
+ninety_start = today - timedelta(days=89)
+all_cost, all_reqs = cost_for_period(ninety_start)
 
-metric_row([
-    ("Today", format_cost(today_cost), f"{int(today_reqs)} requests"),
-    ("This Week", format_cost(week_cost), f"{int(week_reqs)} requests"),
-    ("This Month", format_cost(month_cost), f"{int(month_reqs)} requests"),
-    ("All Time (90d)", format_cost(all_cost), f"{int(all_reqs)} requests"),
-])
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Today", format_cost(today_cost), f"{int(today_reqs)} reqs")
+c2.metric("This Week", format_cost(week_cost), f"{int(week_reqs)} reqs")
+c3.metric("This Month", format_cost(month_cost), f"{int(month_reqs)} reqs")
+c4.metric("90d Total", format_cost(all_cost), f"{int(all_reqs)} reqs")
 
-# --- API provider breakdown ---
+# --- Provider breakdown (inline caption) ---
 if "api_type" in df.columns:
     exa_mask = df["api_type"] == "exa"
     exa_cost = df.loc[exa_mask, "total_cost"].sum()
     openrouter_cost = df.loc[~exa_mask, "total_cost"].sum()
-    exa_reqs = df.loc[exa_mask, "request_count"].sum()
-    or_reqs = df.loc[~exa_mask, "request_count"].sum()
+    exa_reqs = int(df.loc[exa_mask, "request_count"].sum())
+    or_reqs = int(df.loc[~exa_mask, "request_count"].sum())
 
+    parts = [f"OpenRouter {format_cost(openrouter_cost)} ({or_reqs} reqs)"]
     if exa_cost > 0:
-        st.divider()
-        st.subheader("By Provider")
-        metric_row([
-            ("OpenRouter", format_cost(openrouter_cost), f"{int(or_reqs)} requests"),
-            ("Exa Search", format_cost(exa_cost), f"{int(exa_reqs)} requests"),
-        ])
+        parts.append(f"Exa {format_cost(exa_cost)} ({exa_reqs} reqs)")
+    st.caption(" · ".join(parts))
 
-st.divider()
+# --- Chart helper ---
+CHART_FONT = dict(family="DM Sans, sans-serif", size=13)
 
-# --- Cost trend ---
-col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("Daily Cost Trend")
-    daily = df.groupby("day").agg({"total_cost": "sum"}).reset_index().sort_values("day")
+def _style_chart(fig, height=380, dollar_y=True):
+    """Style a plotly figure with DM Sans, legend size 13, transparent bg."""
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=60, r=40, t=50, b=40),
+        legend=dict(font=CHART_FONT),
+        font=CHART_FONT,
+        height=height,
+    )
+    fig.update_xaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
+    fig.update_yaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
+    if dollar_y:
+        fig.update_yaxes(tickprefix="$")
+    return fig
+
+
+# --- Two-column chart layout ---
+left, right = st.columns(2)
+
+with left:
+    daily = (
+        df.groupby("day")
+        .agg({"total_cost": "sum"})
+        .reset_index()
+        .sort_values("day")
+    )
     if len(daily) > 1:
         fig = px.area(
             daily, x="day", y="total_cost",
-            title="Daily Spend",
-            labels={"day": "Date", "total_cost": "Cost ($)"},
+            labels={"day": "Date", "total_cost": "Cost"},
         )
     else:
         fig = px.bar(
             daily, x="day", y="total_cost",
-            title="Daily Spend",
-            labels={"day": "Date", "total_cost": "Cost ($)"},
+            labels={"day": "Date", "total_cost": "Cost"},
         )
-    fig.update_layout(xaxis_tickformat="%b %d")
-    style_fig(fig)
+    fig.update_layout(title="Daily Cost Trend", xaxis_tickformat="%b %d")
+    _style_chart(fig, height=380)
     st.plotly_chart(fig, use_container_width=True)
 
-with col2:
-    st.subheader("Cost by Workflow")
+with right:
     if "workflow" in df.columns:
-        by_wf = df.groupby("workflow").agg({"total_cost": "sum"}).reset_index()
-        by_wf = by_wf.sort_values("total_cost", ascending=True)
+        by_wf = (
+            df.groupby("workflow")
+            .agg({"total_cost": "sum"})
+            .reset_index()
+            .sort_values("total_cost", ascending=True)
+        )
         fig = px.bar(
             by_wf, x="total_cost", y="workflow",
             orientation="h",
-            title="Total Spend by Workflow",
-            labels={"total_cost": "Cost ($)", "workflow": "Workflow"},
+            labels={"total_cost": "Cost", "workflow": "Workflow"},
         )
-        style_fig(fig)
+        fig.update_layout(title="Cost by Workflow")
+        _style_chart(fig, height=380)
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No workflow breakdown available in current data.")
 
-# --- Cost by model ---
+# --- Cost by Model table ---
 if "model" in df.columns:
     st.subheader("Cost by Model")
     agg_cols = {"total_cost": "sum", "request_count": "sum"}
@@ -165,40 +188,74 @@ if "model" in df.columns:
         agg_cols["total_input_tokens"] = "sum"
     if "total_output_tokens" in df.columns:
         agg_cols["total_output_tokens"] = "sum"
-    by_model = df.groupby("model").agg(agg_cols).reset_index().sort_values("total_cost", ascending=False)
+    by_model = (
+        df.groupby("model")
+        .agg(agg_cols)
+        .reset_index()
+        .sort_values("total_cost", ascending=False)
+    )
+
+    max_cost = by_model["total_cost"].max() if len(by_model) > 0 else 1.0
 
     rename_map = {
         "model": "Model",
-        "total_cost": "Total Cost ($)",
+        "total_cost": "Cost",
         "request_count": "Requests",
         "total_input_tokens": "Input Tokens",
         "total_output_tokens": "Output Tokens",
     }
+    display_df = by_model.rename(columns=rename_map)
+
+    col_config = {
+        "Cost": st.column_config.ProgressColumn(
+            "Cost",
+            format="$%.4f",
+            min_value=0,
+            max_value=float(max_cost),
+        ),
+        "Requests": st.column_config.NumberColumn(format="%d"),
+    }
+    if "Input Tokens" in display_df.columns:
+        col_config["Input Tokens"] = st.column_config.NumberColumn(format="%d")
+    if "Output Tokens" in display_df.columns:
+        col_config["Output Tokens"] = st.column_config.NumberColumn(format="%d")
+
     st.dataframe(
-        by_model.rename(columns=rename_map),
+        display_df,
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "Total Cost ($)": st.column_config.NumberColumn(format="$%.4f"),
-        },
+        column_config=col_config,
     )
 
-# --- Cost by workflow over time ---
+# --- Daily Cost by Workflow (full width stacked area) ---
 if "workflow" in df.columns:
-    st.subheader("Daily Cost by Workflow")
-    daily_wf = df.groupby(["day", "workflow"]).agg({"total_cost": "sum"}).reset_index().sort_values("day")
+    daily_wf = (
+        df.groupby(["day", "workflow"])
+        .agg({"total_cost": "sum"})
+        .reset_index()
+        .sort_values("day")
+    )
     if len(daily_wf) > 1:
         fig = px.area(
             daily_wf, x="day", y="total_cost", color="workflow",
-            title="Cost Breakdown Over Time",
-            labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
+            labels={"day": "Date", "total_cost": "Cost", "workflow": "Workflow"},
         )
     else:
         fig = px.bar(
             daily_wf, x="day", y="total_cost", color="workflow",
-            title="Cost Breakdown Over Time",
-            labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
+            labels={"day": "Date", "total_cost": "Cost", "workflow": "Workflow"},
         )
-    fig.update_layout(xaxis_tickformat="%b %d")
-    style_fig(fig)
+    fig.update_layout(
+        title="Daily Cost by Workflow",
+        xaxis_tickformat="%b %d",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0,
+            font=CHART_FONT,
+        ),
+    )
+    _style_chart(fig, height=350)
     st.plotly_chart(fig, use_container_width=True)

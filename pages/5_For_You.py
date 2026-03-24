@@ -43,8 +43,8 @@ if is_all:
     st.caption("Showing all domains (Engineering view)")
 else:
     pills_html = "".join(
-        f'<span style="display:inline-block; background:rgba(168,85,247,0.15); '
-        f'border:1px solid rgba(168,85,247,0.25); border-radius:20px; '
+        f'<span style="display:inline-block; background:rgba(229,164,49,0.15); '
+        f'border:1px solid rgba(229,164,49,0.25); border-radius:20px; '
         f'padding:4px 12px; font-size:0.75rem; margin:2px 4px;">{d}</span>'
         for d in user_domains
     )
@@ -94,11 +94,11 @@ def colored_metric(label, value, color):
     st.markdown(
         f'<div style="border:1px solid rgba(168,85,247,0.15); border-radius:12px; '
         f'padding:16px 20px; margin-bottom:16px; background:linear-gradient(145deg,#2A3154,#252B45); '
-        f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),'
-        f'inset 0 1px 0 rgba(255,255,255,0.04);">'
+        f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.04);">'
         f'<p style="font-size:0.8rem; font-weight:500; text-transform:uppercase; '
         f'letter-spacing:0.06em; opacity:0.7; margin:0 0 4px 0;">{label}</p>'
-        f'<p style="font-size:1.8rem; font-weight:700; margin:0; color:{color};">{value}</p>'
+        f'<p style="font-family:DM Sans,sans-serif; font-size:2rem; font-weight:700; margin:0; color:{color}; '
+        f'font-variant-numeric:tabular-nums;">{value}</p>'
         f'</div>',
         unsafe_allow_html=True,
     )

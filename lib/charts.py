@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
+
 import streamlit as st
 
 # Consistent color palette across all pages
@@ -71,3 +74,14 @@ def format_cost(cost: float) -> str:
     if cost >= 1.0:
         return f"${cost:,.2f}"
     return f"${cost:,.4f}"
+
+
+def parse_ts(ts):
+    """Parse ISO timestamp, stripping timezone info."""
+    if not ts:
+        return None
+    try:
+        clean = re.sub(r'[+-]\d{2}:\d{2}$|Z$', '', ts)
+        return datetime.fromisoformat(clean)
+    except Exception:
+        return None

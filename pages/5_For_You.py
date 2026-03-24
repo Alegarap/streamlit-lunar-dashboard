@@ -12,10 +12,30 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
+from lib import linear_client as lc
 from lib import style
 from lib.charts import COLORS, style_fig
 
 style.apply()
+
+
+def _update_item_linear_id(item_id, linear_identifier, linear_issue_id):
+    """Update a Supabase item with its Linear identifier after creation."""
+    import json
+    import urllib.request
+    url, _ = sb._get_credentials()
+    hdrs = sb._headers()
+    hdrs["Prefer"] = "return=minimal"
+    body = json.dumps({
+        "linear_identifier": linear_identifier,
+        "linear_issue_id": linear_issue_id,
+    }).encode()
+    req = urllib.request.Request(
+        f"{url}/rest/v1/items?id=eq.{item_id}",
+        data=body, headers=hdrs, method="PATCH",
+    )
+    urllib.request.urlopen(req, timeout=10)
+
 
 # --- Sidebar ---
 with st.sidebar:
@@ -59,6 +79,7 @@ all_clusters = sb.query_fresh("clusters", {
     "order": "hotness_score.desc.nullslast",
     "limit": "500",
 })
+all_clusters = [c for c in (all_clusters or []) if c.get("item_count", 0) > 0]
 
 domain_lower = [d.lower() for d in user_domains] if not is_all else []
 
@@ -210,33 +231,110 @@ else:
             unsafe_allow_html=True,
         )
 
-        # Expandable drill-down
+        # Expandable drill-down with bulk add to Linear
         with st.expander(f"View items in {label}", expanded=False):
             cluster_items = sb.query_fresh("items", {
-                "select": "title,source,type,source_date,source_url,linear_identifier",
+                "select": "id,title,source,type,source_date,source_url,source_labels,linear_identifier,description,summary",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
                 "limit": "200",
             })
-            if cluster_items:
+            if not cluster_items:
+                st.caption("No items found.")
+            else:
+                # Split into items already in Linear vs not
+                not_in_linear = [i for i in cluster_items if not i.get("linear_identifier")]
+                in_linear = [i for i in cluster_items if i.get("linear_identifier")]
+
+                # Show table of all items
                 df = pd.DataFrame(cluster_items)
-                if "source_date" in df.columns:
-                    df["source_date"] = pd.to_datetime(df["source_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+                display_cols = ["title", "source", "type", "source_date", "linear_identifier", "source_url"]
+                df_display = df[[c for c in display_cols if c in df.columns]].copy()
+                if "source_date" in df_display.columns:
+                    df_display["source_date"] = pd.to_datetime(df_display["source_date"], errors="coerce").dt.strftime("%Y-%m-%d")
                 st.dataframe(
-                    df.rename(columns={
-                        "title": "Title",
-                        "source": "Source",
-                        "type": "Type",
-                        "source_date": "Date",
-                        "linear_identifier": "Linear",
+                    df_display.rename(columns={
+                        "title": "Title", "source": "Source", "type": "Type",
+                        "source_date": "Date", "linear_identifier": "Linear",
                         "source_url": "URL",
                     }),
-                    use_container_width=True,
-                    hide_index=True,
+                    use_container_width=True, hide_index=True,
                     column_config={"URL": st.column_config.LinkColumn("URL", display_text="Link")},
                 )
-            else:
-                st.caption("No items found.")
+
+                # Bulk add to Linear — only show if there are items not yet in Linear
+                if not_in_linear:
+                    st.markdown(f"**{len(not_in_linear)} item{'s' if len(not_in_linear) != 1 else ''} not yet in Linear:**")
+
+                    # Multi-select for items to add
+                    options = {f"{i['title'][:80]} ({i['type']}, {i['source']})": i for i in not_in_linear}
+                    selected = st.multiselect(
+                        "Select items to create in Linear",
+                        options=list(options.keys()),
+                        default=[],
+                        key=f"bulk_select_{cluster['id']}",
+                    )
+
+                    if selected:
+                        col_btn, col_info = st.columns([1, 3])
+                        with col_btn:
+                            create_clicked = st.button(
+                                f"Create {len(selected)} in Linear",
+                                key=f"bulk_create_{cluster['id']}",
+                                type="primary",
+                            )
+                        with col_info:
+                            st.caption("Themes → THE team, Deals → DEAL team. Labels and assignee added automatically.")
+
+                        if create_clicked:
+                            created_count = 0
+                            errors = []
+                            progress = st.progress(0)
+                            status = st.empty()
+
+                            for idx, key in enumerate(selected):
+                                item = options[key]
+                                team = "THE" if item["type"] == "theme" else "DEAL"
+                                title = item["title"]
+
+                                # Prepend 📜 for arxiv items
+                                if item.get("source") == "arxiv":
+                                    title = f"📜 {title}"
+
+                                desc = item.get("description") or item.get("summary") or ""
+                                labels = item.get("source_labels") or []
+
+                                status.text(f"Creating {idx + 1}/{len(selected)}: {title[:50]}...")
+                                result = lc.create_issue(
+                                    team=team,
+                                    title=title,
+                                    description=desc,
+                                    assignee_id=profile.get("linear_id"),
+                                    label_names=labels,
+                                )
+
+                                if "error" in result:
+                                    errors.append(f"{title[:40]}: {result['error']}")
+                                else:
+                                    created_count += 1
+                                    # Update Supabase item with linear_identifier
+                                    try:
+                                        _update_item_linear_id(item["id"], result.get("identifier", ""), result.get("id", ""))
+                                    except Exception:
+                                        pass
+
+                                progress.progress((idx + 1) / len(selected))
+
+                            status.empty()
+                            progress.empty()
+
+                            if created_count:
+                                st.success(f"Created {created_count} issue{'s' if created_count != 1 else ''} in Linear!")
+                            if errors:
+                                for err in errors:
+                                    st.error(err)
+                elif in_linear and not not_in_linear:
+                    st.caption("All items in this cluster are already in Linear.")
 
 # ---------------------------------------------------------------------------
 # 5. Trending in Your Domains

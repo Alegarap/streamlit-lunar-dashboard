@@ -179,7 +179,7 @@ st.divider()
 st.subheader("Latest Items")
 try:
     latest = sb.query_fresh("items", {
-        "select": "created_at,source,type,title",
+        "select": "created_at,source,type,title,source_url",
         "order": "created_at.desc",
         "limit": "100",
     })
@@ -193,12 +193,19 @@ try:
             "source": "Source",
             "type": "Type",
             "title": "Title",
+            "source_url": "URL",
         })
         if dataframe_explorer is not None:
             filtered = dataframe_explorer(df_latest, case=False)
-            st.dataframe(filtered, use_container_width=True, hide_index=True)
+            st.dataframe(filtered, use_container_width=True, hide_index=True,
+                         column_config={
+                             "URL": st.column_config.LinkColumn("URL", display_text="Link"),
+                         })
         else:
-            st.dataframe(df_latest, use_container_width=True, hide_index=True)
+            st.dataframe(df_latest, use_container_width=True, hide_index=True,
+                         column_config={
+                             "URL": st.column_config.LinkColumn("URL", display_text="Link"),
+                         })
     else:
         st.info("No items found.")
 except Exception as e:

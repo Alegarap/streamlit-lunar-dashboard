@@ -11,10 +11,69 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
+from lib import linear_client as lc
 from lib import style
 from lib.charts import COLORS, metric_row, style_fig
 
 style.apply()
+
+# --- User profile for Linear creation ---
+_profile = st.session_state.get("user_profile", {})
+
+
+def _bulk_create_issues(selected_keys, options_map, profile):
+    """Create multiple Linear issues from selected items."""
+    import json
+    import urllib.request
+
+    created_count = 0
+    errors = []
+    progress = st.progress(0)
+    status = st.empty()
+
+    for idx, key in enumerate(selected_keys):
+        item = options_map[key]
+        team = "THE" if item["type"] == "theme" else "DEAL"
+        title = item["title"]
+        if item.get("source") == "arxiv":
+            title = f"📜 {title}"
+        desc = item.get("description") or item.get("summary") or ""
+        labels = item.get("source_labels") or []
+
+        status.text(f"Creating {idx + 1}/{len(selected_keys)}: {title[:50]}...")
+        result = lc.create_issue(
+            team=team, title=title, description=desc,
+            assignee_id=profile.get("linear_id"),
+            label_names=labels,
+        )
+        if "error" in result:
+            errors.append(f"{title[:40]}: {result['error']}")
+        else:
+            created_count += 1
+            try:
+                url_base, _ = sb._get_credentials()
+                hdrs = sb._headers()
+                hdrs["Prefer"] = "return=minimal"
+                body = json.dumps({
+                    "linear_identifier": result.get("identifier", ""),
+                    "linear_issue_id": result.get("id", ""),
+                }).encode()
+                req = urllib.request.Request(
+                    f"{url_base}/rest/v1/items?id=eq.{item['id']}",
+                    data=body, headers=hdrs, method="PATCH",
+                )
+                urllib.request.urlopen(req, timeout=10)
+            except Exception:
+                pass
+
+        progress.progress((idx + 1) / len(selected_keys))
+
+    status.empty()
+    progress.empty()
+    if created_count:
+        st.success(f"Created {created_count} issue{'s' if created_count != 1 else ''} in Linear!")
+    for err in errors:
+        st.error(err)
 st.title("Clusters & What's Hot")
 
 # --- User profile for domain filtering ---
@@ -47,6 +106,7 @@ with st.spinner("Loading clusters..."):
         "limit": "500",
     })
 
+clusters = [c for c in clusters if c.get("item_count", 0) > 0]
 all_clusters = clusters  # keep unfiltered for metrics
 
 # Filter clusters by user domains if toggle is on
@@ -152,34 +212,54 @@ if clusters:
                     last = str(cluster["last_surfaced_at"])[:10]
                     st.caption(f"Last active: {last}")
 
-            # Fetch items for this cluster
+            # Fetch items for this cluster (with full data for Linear creation)
             items = sb.query_fresh("items", {
-                "select": "title,source,type,source_date,linear_identifier,source_url",
+                "select": "id,title,source,type,source_date,linear_identifier,source_url,source_labels,description,summary",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
                 "limit": "200",
             })
             if items:
                 df_items = pd.DataFrame(items)
-                if "source_date" in df_items.columns:
-                    df_items["source_date"] = pd.to_datetime(
-                        df_items["source_date"], errors="coerce"
+                display_cols = ["title", "source", "type", "source_date", "linear_identifier", "source_url"]
+                df_display = df_items[[c for c in display_cols if c in df_items.columns]].copy()
+                if "source_date" in df_display.columns:
+                    df_display["source_date"] = pd.to_datetime(
+                        df_display["source_date"], errors="coerce"
                     ).dt.strftime("%Y-%m-%d")
                 st.dataframe(
-                    df_items.rename(columns={
-                        "title": "Title",
-                        "source": "Source",
-                        "type": "Type",
-                        "source_date": "Date",
-                        "linear_identifier": "Linear",
+                    df_display.rename(columns={
+                        "title": "Title", "source": "Source", "type": "Type",
+                        "source_date": "Date", "linear_identifier": "Linear",
                         "source_url": "URL",
                     }),
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "URL": st.column_config.LinkColumn("URL", display_text="Link"),
-                    },
+                    use_container_width=True, hide_index=True,
+                    column_config={"URL": st.column_config.LinkColumn("URL", display_text="Link")},
                 )
+
+                # Bulk add to Linear
+                not_in_linear = [i for i in items if not i.get("linear_identifier")]
+                if not_in_linear:
+                    st.markdown(f"**{len(not_in_linear)} item{'s' if len(not_in_linear) != 1 else ''} not yet in Linear:**")
+                    options = {f"{i['title'][:80]} ({i['type']}, {i['source']})": i for i in not_in_linear}
+                    selected = st.multiselect(
+                        "Select items to create in Linear",
+                        options=list(options.keys()),
+                        default=[],
+                        key=f"cl_bulk_{cluster['id']}",
+                    )
+                    if selected:
+                        col_btn, col_info = st.columns([1, 3])
+                        with col_btn:
+                            create_clicked = st.button(
+                                f"Create {len(selected)} in Linear",
+                                key=f"cl_create_{cluster['id']}",
+                                type="primary",
+                            )
+                        with col_info:
+                            st.caption("Themes → THE, Deals → DEAL. Labels + assignee added automatically.")
+                        if create_clicked:
+                            _bulk_create_issues(selected, options, _profile)
 
 # --- Distributions ---
 st.divider()

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from lib.user_profiles import get_profile
+from lib.user_profiles import get_profile, all_profiles
 
 # ---------------------------------------------------------------------------
 # CSS
@@ -194,12 +194,13 @@ _ALL_PAGES = {
 }
 
 
-def _resolve_profile():
+def _resolve_profile(force_refresh=False):
     """Resolve logged-in user's profile and store in session state.
 
     Merges base profile with any user_preferences from Supabase.
+    Supports persona override for Engineering users.
     """
-    if "user_profile" in st.session_state:
+    if not force_refresh and "user_profile" in st.session_state:
         return st.session_state["user_profile"]
 
     email = ""
@@ -216,6 +217,17 @@ def _resolve_profile():
         profile = get_profile("", fallback_name="Guest")
         st.session_state["user_profile"] = profile
         return profile
+
+    # Check for persona override (Engineering users only)
+    persona_key = st.session_state.get("_persona_override")
+    if persona_key:
+        profiles = all_profiles()
+        if persona_key in profiles:
+            profile = dict(profiles[persona_key])
+            profile["_simulated"] = True
+            profile["_real_email"] = email
+            st.session_state["user_profile"] = profile
+            return profile
 
     profile = get_profile(email.strip(), fallback_name=name)
 
@@ -285,15 +297,75 @@ def apply():
                 st.page_link(page_file, label=page_label, icon=page_icon)
 
         st.divider()
+
+        # --- User info + profile viewer ---
         try:
-            if st.user.is_logged_in:
-                display_name = profile.get("name") or st.user.name
-                role = profile.get("role", "")
-                if role:
-                    st.caption(f"Signed in as {display_name} · {role}")
-                else:
-                    st.caption(f"Signed in as {display_name}")
-                if st.button("Sign out", use_container_width=True):
-                    st.logout()
+            is_logged_in = st.user.is_logged_in
         except AttributeError:
-            pass
+            is_logged_in = False
+
+        if is_logged_in or st.session_state.get("_auth_bypass"):
+            display_name = profile.get("name") or getattr(st.user, "name", "User")
+            role = profile.get("role", "")
+            simulated = profile.get("_simulated", False)
+
+            if simulated:
+                st.caption(f"Viewing as {display_name} · {role}")
+            elif role:
+                st.caption(f"Signed in as {display_name} · {role}")
+            else:
+                st.caption(f"Signed in as {display_name}")
+
+            # Profile viewer (expandable)
+            domains = profile.get("domains", [])
+            domain_text = "All domains" if domains == ["all"] else ", ".join(domains[:10]) or "None"
+            notes = profile.get("notes", "")
+
+            with st.expander("My Profile", expanded=False):
+                st.markdown(f"**Role:** {role}")
+                st.markdown(f"**Domains:** {domain_text}")
+                if notes:
+                    st.markdown(f"**Notes:** {notes}")
+                st.caption("Edit preferences via Ask AI: \"Add X to my interests\"")
+
+            # --- Persona simulator (Engineering only) ---
+            real_email = profile.get("_real_email", "")
+            real_profile = get_profile(real_email) if real_email else profile
+            is_engineering = (
+                real_profile.get("role") == "Engineering"
+                or profile.get("role") == "Engineering"
+            )
+
+            if is_engineering:
+                profiles = all_profiles()
+                persona_options = {"(myself)": None}
+                for key, p in profiles.items():
+                    persona_options[f"{p['name']} · {p['role']}"] = key
+
+                current_persona = st.session_state.get("_persona_override")
+                current_label = "(myself)"
+                for label, key in persona_options.items():
+                    if key == current_persona:
+                        current_label = label
+                        break
+
+                selected = st.selectbox(
+                    "Simulate persona",
+                    options=list(persona_options.keys()),
+                    index=list(persona_options.keys()).index(current_label),
+                    key="_persona_select",
+                )
+                new_persona = persona_options[selected]
+                if new_persona != current_persona:
+                    st.session_state["_persona_override"] = new_persona
+                    st.session_state.pop("user_profile", None)
+                    st.session_state.pop("messages", None)  # reset Ask AI context
+                    st.rerun()
+
+            # Sign out button
+            try:
+                if st.user.is_logged_in:
+                    if st.button("Sign out", use_container_width=True):
+                        st.logout()
+            except AttributeError:
+                pass

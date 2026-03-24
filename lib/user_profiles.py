@@ -130,6 +130,11 @@ for _key, _prof in _PROFILES.items():
     _EMAIL_MAP[f"{_key}@lunar.vc"] = _prof
 
 
+def all_profiles():
+    """Return all known profiles as a dict of key → profile."""
+    return dict(_PROFILES)
+
+
 def get_profile(email, fallback_name=None):
     """Look up a user profile by email.
 

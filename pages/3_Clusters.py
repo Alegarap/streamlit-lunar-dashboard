@@ -17,11 +17,27 @@ from lib.charts import COLORS, metric_row, style_fig
 style.apply()
 st.title("Clusters & What's Hot")
 
+# --- User profile for domain filtering ---
+profile = st.session_state.get("user_profile", {})
+user_domains = profile.get("domains", [])
+has_domains = user_domains and user_domains != ["all"]
+
 with st.sidebar:
     st.caption("Data refreshes every 5 minutes")
     if st.button("Refresh now", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+
+# --- Domain filter toggle ---
+show_all = True
+if has_domains:
+    filter_col1, filter_col2 = st.columns([3, 1])
+    with filter_col1:
+        show_all = not st.toggle(
+            "Relevant to me",
+            value=True,
+            help=f"Filter clusters to your domains: {', '.join(user_domains[:5])}{'...' if len(user_domains) > 5 else ''}",
+        )
 
 # --- Overview metrics ---
 clusters = sb.query_fresh("clusters", {
@@ -30,14 +46,27 @@ clusters = sb.query_fresh("clusters", {
     "limit": "500",
 })
 
+all_clusters = clusters  # keep unfiltered for metrics
+
+# Filter clusters by user domains if toggle is on
+if has_domains and not show_all and clusters:
+    domain_lower = [d.lower() for d in user_domains]
+
+    def _cluster_matches(c):
+        text = ((c.get("label") or "") + " " + (c.get("summary") or "")).lower()
+        return any(d in text for d in domain_lower)
+
+    clusters = [c for c in clusters if _cluster_matches(c)]
+
 total_items = sb.count_rows("items")
 clustered_items = sb.count_rows("items", {"cluster_id": "not.is.null"})
 unclustered = total_items - clustered_items
 clustering_rate = (clustered_items / total_items * 100) if total_items > 0 else 0
 
-total_clusters = len(clusters)
-hot_clusters = sum(1 for c in clusters if (c.get("hotness_score") or 0) > 0.3)
-labeled_clusters = sum(1 for c in clusters if c.get("label"))
+total_clusters = len(all_clusters)
+hot_clusters = sum(1 for c in all_clusters if (c.get("hotness_score") or 0) > 0.3)
+labeled_clusters = sum(1 for c in all_clusters if c.get("label"))
+filtered_count = len(clusters) if (has_domains and not show_all) else None
 
 metric_row([
     ("Items", f"{total_items:,}", None),
@@ -46,6 +75,9 @@ metric_row([
     ("Clusters", total_clusters, f"{labeled_clusters} labeled"),
     ("Hot (>0.3)", hot_clusters, None),
 ])
+
+if filtered_count is not None:
+    st.caption(f"Showing {filtered_count} clusters matching your domains (of {total_clusters} total)")
 
 st.divider()
 

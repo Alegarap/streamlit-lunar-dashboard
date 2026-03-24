@@ -26,7 +26,7 @@ style.apply()
 st.title("Ask AI")
 
 with st.sidebar:
-    st.caption("Powered by Claude")
+    st.caption("Powered by Claude via OpenRouter")
     if st.button("Clear conversation", use_container_width=True):
         st.session_state.messages = []
         st.session_state.pop("pending_action", None)
@@ -360,8 +360,8 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 9. **Preferences**: When the user expresses interest in new topics or asks you to remember something, use update_user_preferences to persist it.
 10. **Pre-aggregate cost/ingestion data**: When presenting cost or ingestion totals, sum the data yourself from the query results. State the totals explicitly.
 11. **Creating issues from items**: When creating a Linear issue from a Supabase item, use the item's existing title and description/summary. Pass the item's source_labels as label_names (e.g. "Academic Sourcing" for arxiv, "Hacker News" for HN, "Conference" for conferences). The "Lunar Dashboard" label is always added automatically. Always assign the issue to the current user (use their Linear user ID: {user_linear_id}) unless they specify someone else.
-13. **Arxiv (Academic Sourcing) items**: When creating Linear issues from arxiv items, ALWAYS prepend the scroll emoji to the title: "\U0001f4dc Original Title". This applies to both themes (THE) and deals (DEAL).
-14. **Arxiv theme → deal bundle**: When creating a THE issue from an arxiv theme, also look up related deals in Supabase by matching `metadata->>arxiv_id`. The theme's `metadata.authors` array lists authors — the first author is the main author. Find the deal with that author's name as title and create it as a DEAL issue too (also with \U0001f4dc prefix, same title and description from Supabase). After creating both, use relate_linear_issues to link the theme and deal as related issues. Always inform the user which deal(s) you're creating alongside the theme.
+13. **Arxiv (Academic Sourcing) items**: When creating Linear issues from arxiv items, ALWAYS prepend the scroll emoji to the title: "📜 Original Title". This applies to both themes (THE) and deals (DEAL).
+14. **Arxiv theme → deal bundle**: When creating a THE issue from an arxiv theme, also look up related deals in Supabase by matching `metadata->>arxiv_id`. The theme's `metadata.authors` array lists authors — the first author is the main author. Find the deal with that author's name as title and create it as a DEAL issue too (also with 📜 prefix, same title and description from Supabase). After creating both, use relate_linear_issues to link the theme and deal as related issues. Always inform the user which deal(s) you're creating alongside the theme.
 12. **Updating issues**: You can update existing Linear issues — change title, description, state, assignee, add labels, or post comments. Use the update_linear_issue tool.
 """
 
@@ -703,14 +703,14 @@ else:
         "Show ingestion chart for last 7 days",
     ]
 
-st.markdown('<p style="font-size:0.85rem; opacity:0.6; margin-bottom:8px;">Try asking:</p>', unsafe_allow_html=True)
-q_row1 = st.columns(2)
-q_row2 = st.columns(2)
-all_cols = [q_row1[0], q_row1[1], q_row2[0], q_row2[1]]
-for col, q in zip(all_cols, quick_queries[:4]):
-    if col.button(q, key=f"quick_{q}"):
+st.markdown("**Quick queries:**")
+quick_cols = st.columns(len(quick_queries))
+for col, q in zip(quick_cols, quick_queries):
+    if col.button(q, use_container_width=True, key=f"quick_{q}"):
         st.session_state["ask_input"] = q
         st.rerun()
+
+st.divider()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -718,13 +718,11 @@ if "messages" not in st.session_state:
 if not st.session_state.messages:
     greeting = f"Hi {user_name}!" if user_name and user_name != "team member" else "Hi!"
     st.markdown(
-        f'<div style="text-align:center; margin:3rem 0 2rem;">'
-        f'<div style="font-size:2rem; margin-bottom:0.5rem;">&#10024;</div>'
-        f'<p style="font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">{greeting}</p>'
-        f'<p style="color:#94a3b8; max-width:500px; margin:0 auto; line-height:1.6;">'
-        f"I can explore sourcing data, find themes and deals, "
-        f"search Linear issues, and create new ones.</p>"
-        f'</div>',
+        f'<p style="color: #94a3b8; text-align: center; margin: 3rem 0;">'
+        f"{greeting} I'm Lunar AI — I can help you explore sourcing data, "
+        f"find relevant themes and deals, search Linear issues, and even create new ones. "
+        f'Try asking about hot clusters, items in your domain, or anything about the pipeline.'
+        f"</p>",
         unsafe_allow_html=True,
     )
 

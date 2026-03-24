@@ -16,130 +16,86 @@ from lib.user_profiles import get_profile, all_profiles
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;800&display=swap');
 
-/* Global typography */
-html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
-    font-family: 'Fira Sans', -apple-system, sans-serif !important;
-}
-
-/* Sidebar: hide auto-generated nav */
+/* Sidebar: hide auto-generated nav — replaced by custom page links */
 [data-testid="stSidebarNav"] {
     display: none !important;
 }
+
+/* Sidebar: reduce top padding */
 [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
     padding-top: 0.5rem !important;
 }
 
-/* Force wide layout */
-[data-testid="stAppViewBlockContainer"],
+/* Force wide layout on all pages */
+[data-testid="stAppViewBlockContainer"] {
+    max-width: 100% !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
 .block-container {
     max-width: 100% !important;
     padding-left: 2rem !important;
     padding-right: 2rem !important;
 }
 
-/* Headings */
-h1, h2, h3, [data-testid="stHeading"] {
-    font-family: 'Fira Sans', sans-serif !important;
-    font-weight: 600 !important;
-}
-
-/* Metric cards — gradient for contrast */
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #2A3154, #252B45) !important;
     border: 1px solid rgba(168, 85, 247, 0.15);
     border-radius: 12px;
     padding: 16px 20px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 [data-testid="stMetricLabel"] {
-    font-family: 'Fira Sans', sans-serif !important;
     font-size: 0.8rem !important;
     font-weight: 500 !important;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     opacity: 0.7;
 }
 [data-testid="stMetricValue"] {
-    font-family: 'Fira Code', monospace !important;
     font-size: 1.8rem !important;
-    font-weight: 600 !important;
-    font-variant-numeric: tabular-nums;
+    font-weight: 700 !important;
 }
 [data-testid="stMetricDelta"] {
     font-size: 0.75rem !important;
 }
-
-/* Expanders */
 [data-testid="stExpander"] {
     border: 1px solid rgba(128, 128, 128, 0.2) !important;
     border-radius: 8px !important;
     margin-bottom: 8px;
-    transition: border-color 0.2s ease;
 }
-[data-testid="stExpander"]:hover {
-    border-color: rgba(168, 85, 247, 0.3) !important;
-}
-[data-testid="stExpander"] summary {
-    transition: color 0.15s ease;
-}
-
-/* Tabs */
 [data-testid="stTabs"] button {
     font-weight: 500 !important;
 }
-[data-testid="stTabs"] button[aria-selected="true"] {
-    font-weight: 600 !important;
-    border-bottom: 2px solid #A855F7 !important;
-}
-[data-testid="stTabs"] button[aria-selected="false"]:hover {
-    color: #A855F7 !important;
-    opacity: 0.9;
-}
-
-/* Dividers */
 hr {
     margin: 1.5rem 0 !important;
 }
-
-/* Chat */
 [data-testid="stChatMessage"] {
     border-radius: 12px;
 }
-
-/* Buttons */
 [data-testid="stButton"] button {
     border-radius: 8px !important;
     font-size: 0.85rem !important;
     transition: all 0.15s ease;
 }
-[data-testid="stButton"] button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2);
-}
-[data-testid="stButton"] button:active {
-    transform: translateY(0px);
-    box-shadow: none;
-}
-
-/* Tables */
+/* Dataframes / tables */
 [data-testid="stDataFrame"] {
     border-radius: 8px;
     border: 1px solid rgba(128, 128, 128, 0.15);
     overflow: hidden;
 }
 
-/* Charts */
+/* Plotly charts */
 [data-testid="stPlotlyChart"] {
     background: linear-gradient(145deg, #2A3154, #252B45) !important;
     border-radius: 12px;
     padding: 0 16px;
     border: 1px solid rgba(128, 128, 128, 0.1);
+    transition: opacity 0.2s ease;
 }
-
-/* Sidebar nav links */
 [data-testid="stPageLink"] {
     border: 1px solid rgba(128, 128, 128, 0.15);
     border-radius: 10px;
@@ -149,27 +105,49 @@ hr {
 [data-testid="stPageLink"]:hover {
     border-color: #A855F7;
 }
+/* Active page indicator */
 [data-testid="stPageLink"][aria-current="page"],
 [data-testid="stPageLink"]:has(a[aria-current="page"]) {
     border-left: 3px solid #A855F7 !important;
     background: rgba(168, 85, 247, 0.08) !important;
     border-color: rgba(168, 85, 247, 0.3) !important;
 }
-
-/* Subheader spacing */
+/* Active tab styling */
+[data-testid="stTabs"] button[aria-selected="true"] {
+    font-weight: 600 !important;
+    border-bottom: 2px solid #A855F7 !important;
+}
+[data-testid="stTabs"] button[aria-selected="false"]:hover {
+    color: #A855F7 !important;
+    opacity: 0.9;
+}
+/* Consistent subheader spacing */
 [data-testid="stSubheader"] {
     margin-top: 0.5rem !important;
     margin-bottom: 0.25rem !important;
 }
-
-/* Metric hover */
+/* Button hover states */
+[data-testid="stButton"] button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2);
+}
+[data-testid="stButton"] button:active {
+    transform: translateY(0px);
+    box-shadow: none;
+}
+/* Expander hover state */
+[data-testid="stExpander"]:hover {
+    border-color: rgba(168, 85, 247, 0.3) !important;
+}
+[data-testid="stExpander"] summary {
+    transition: color 0.15s ease;
+}
+/* Metric card hover */
 [data-testid="stMetric"]:hover {
     border-color: rgba(168, 85, 247, 0.3);
-    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
 }
-
-/* Mobile */
+/* Mobile responsive */
 @media (max-width: 768px) {
     [data-testid="stAppViewBlockContainer"],
     .block-container {
@@ -181,14 +159,6 @@ hr {
     }
     [data-testid="stMetricLabel"] {
         font-size: 0.7rem !important;
-    }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
     }
 }
 </style>
@@ -275,7 +245,7 @@ def require_auth():
 # Profile resolution
 # ---------------------------------------------------------------------------
 
-# Page registry: label -> (file_path, icon)
+# Page registry: label → (file_path, icon)
 _ALL_PAGES = {
     "Home": ("app.py", "🏠"),
     "For You": ("pages/5_For_You.py", "🎯"),
@@ -373,7 +343,7 @@ def apply():
             '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">'
             f'{logo_html}'
             '<span style="font-size:15px; font-weight:800; '
-            'font-family:Fira Sans,system-ui,sans-serif; '
+            'font-family:Inter,system-ui,sans-serif; '
             'letter-spacing:0.1em; '
             'background:linear-gradient(135deg, #EC4899, #A855F7); '
             '-webkit-background-clip:text; -webkit-text-fill-color:transparent; '

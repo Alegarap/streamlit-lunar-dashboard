@@ -46,12 +46,13 @@ CUSTOM_CSS = """
     border-radius: 12px;
     padding: 16px 20px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 [data-testid="stMetricLabel"] {
     font-size: 0.8rem !important;
     font-weight: 500 !important;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.06em;
     opacity: 0.7;
 }
 [data-testid="stMetricValue"] {
@@ -83,6 +84,8 @@ hr {
 /* Dataframes / tables */
 [data-testid="stDataFrame"] {
     border-radius: 8px;
+    border: 1px solid rgba(128, 128, 128, 0.15);
+    overflow: hidden;
 }
 
 /* Plotly charts */
@@ -90,6 +93,8 @@ hr {
     background: linear-gradient(145deg, #2A3154, #252B45) !important;
     border-radius: 12px;
     padding: 0 16px;
+    border: 1px solid rgba(128, 128, 128, 0.1);
+    transition: opacity 0.2s ease;
 }
 [data-testid="stPageLink"] {
     border: 1px solid rgba(128, 128, 128, 0.15);
@@ -99,6 +104,62 @@ hr {
 }
 [data-testid="stPageLink"]:hover {
     border-color: #A855F7;
+}
+/* Active page indicator */
+[data-testid="stPageLink"][aria-current="page"],
+[data-testid="stPageLink"]:has(a[aria-current="page"]) {
+    border-left: 3px solid #A855F7 !important;
+    background: rgba(168, 85, 247, 0.08) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+}
+/* Active tab styling */
+[data-testid="stTabs"] button[aria-selected="true"] {
+    font-weight: 600 !important;
+    border-bottom: 2px solid #A855F7 !important;
+}
+[data-testid="stTabs"] button[aria-selected="false"]:hover {
+    color: #A855F7 !important;
+    opacity: 0.9;
+}
+/* Consistent subheader spacing */
+[data-testid="stSubheader"] {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+}
+/* Button hover states */
+[data-testid="stButton"] button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2);
+}
+[data-testid="stButton"] button:active {
+    transform: translateY(0px);
+    box-shadow: none;
+}
+/* Expander hover state */
+[data-testid="stExpander"]:hover {
+    border-color: rgba(168, 85, 247, 0.3) !important;
+}
+[data-testid="stExpander"] summary {
+    transition: color 0.15s ease;
+}
+/* Metric card hover */
+[data-testid="stMetric"]:hover {
+    border-color: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+/* Mobile responsive */
+@media (max-width: 768px) {
+    [data-testid="stAppViewBlockContainer"],
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.4rem !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.7rem !important;
+    }
 }
 </style>
 """
@@ -187,6 +248,7 @@ def require_auth():
 # Page registry: label → (file_path, icon)
 _ALL_PAGES = {
     "Home": ("app.py", "🏠"),
+    "For You": ("pages/5_For_You.py", "🎯"),
     "Ingestion": ("pages/1_Ingestion.py", "📊"),
     "Cost Tracking": ("pages/2_Cost_Tracking.py", "💰"),
     "Clusters": ("pages/3_Clusters.py", "🔬"),
@@ -285,7 +347,7 @@ def apply():
             'letter-spacing:0.1em; '
             'background:linear-gradient(135deg, #EC4899, #A855F7); '
             '-webkit-background-clip:text; -webkit-text-fill-color:transparent; '
-            'background-clip:text;">LUNAR DASHBOARD</span>'
+            'background-clip:text; color:transparent;">LUNAR DASHBOARD</span>'
             '</div>',
             unsafe_allow_html=True,
         )

@@ -37,7 +37,8 @@ with st.sidebar:
         st.rerun()
 
 # --- Fetch data ---
-raw = sb.rpc_fresh("get_ingestion_stats", {"p_days": 180})
+with st.spinner("Loading ingestion data..."):
+    raw = sb.rpc_fresh("get_ingestion_stats", {"p_days": 180})
 if not raw:
     st.warning("No ingestion data returned from Supabase.")
     st.stop()

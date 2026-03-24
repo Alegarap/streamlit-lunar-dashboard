@@ -40,11 +40,12 @@ if has_domains:
         )
 
 # --- Overview metrics ---
-clusters = sb.query_fresh("clusters", {
-    "select": "id,label,summary,item_count,source_diversity,hotness_score,first_seen_at,last_surfaced_at",
-    "order": "hotness_score.desc.nullslast",
-    "limit": "500",
-})
+with st.spinner("Loading clusters..."):
+    clusters = sb.query_fresh("clusters", {
+        "select": "id,label,summary,item_count,source_diversity,hotness_score,first_seen_at,last_surfaced_at",
+        "order": "hotness_score.desc.nullslast",
+        "limit": "500",
+    })
 
 all_clusters = clusters  # keep unfiltered for metrics
 

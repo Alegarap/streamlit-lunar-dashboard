@@ -16,30 +16,7 @@ from lib.user_profiles import get_profile, all_profiles
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-
-/* Global typography and background */
-html, body, [data-testid="stAppViewContainer"] {
-    font-family: 'IBM Plex Sans', -apple-system, sans-serif !important;
-}
-[data-testid="stAppViewContainer"] {
-    background-color: #0F1117 !important;
-}
-[data-testid="stSidebar"] {
-    background-color: #0F1117 !important;
-}
-[data-testid="stHeader"] {
-    background-color: #0F1117 !important;
-}
-h1, h2, h3, [data-testid="stHeading"] {
-    font-family: 'DM Sans', sans-serif !important;
-}
-
-/* Fade-in animation for cards */
-@keyframes fadeSlideUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;800&display=swap');
 
 /* Sidebar: hide auto-generated nav — replaced by custom page links */
 [data-testid="stSidebarNav"] {
@@ -64,43 +41,37 @@ h1, h2, h3, [data-testid="stHeading"] {
 }
 
 [data-testid="stMetric"] {
-    background: #161B26 !important;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 10px;
+    background: linear-gradient(145deg, #2A3154, #252B45) !important;
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 12px;
     padding: 16px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-    animation: fadeSlideUp 0.3s ease both;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 [data-testid="stMetricLabel"] {
-    font-family: 'IBM Plex Sans', sans-serif !important;
-    font-size: 0.75rem !important;
+    font-size: 0.8rem !important;
     font-weight: 500 !important;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.5;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
 }
 [data-testid="stMetricValue"] {
-    font-family: 'DM Sans', sans-serif !important;
-    font-size: 2rem !important;
+    font-size: 1.8rem !important;
     font-weight: 700 !important;
-    font-variant-numeric: tabular-nums;
 }
 [data-testid="stMetricDelta"] {
     font-size: 0.75rem !important;
 }
 [data-testid="stExpander"] {
-    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
     border-radius: 8px !important;
     margin-bottom: 8px;
-    transition: border-color 0.2s ease;
 }
 [data-testid="stTabs"] button {
     font-weight: 500 !important;
 }
 hr {
-    margin: 2rem 0 !important;
-    border-color: rgba(255, 255, 255, 0.04) !important;
+    margin: 1.5rem 0 !important;
 }
 [data-testid="stChatMessage"] {
     border-radius: 12px;
@@ -113,41 +84,42 @@ hr {
 /* Dataframes / tables */
 [data-testid="stDataFrame"] {
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(128, 128, 128, 0.15);
     overflow: hidden;
 }
 
 /* Plotly charts */
 [data-testid="stPlotlyChart"] {
-    background: #161B26 !important;
-    border-radius: 10px;
-    padding: 8px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: linear-gradient(145deg, #2A3154, #252B45) !important;
+    border-radius: 12px;
+    padding: 0 16px;
+    border: 1px solid rgba(128, 128, 128, 0.1);
+    transition: opacity 0.2s ease;
 }
 [data-testid="stPageLink"] {
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 8px;
+    border: 1px solid rgba(128, 128, 128, 0.15);
+    border-radius: 10px;
     padding: 4px 8px;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
 }
 [data-testid="stPageLink"]:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.03);
+    border-color: #A855F7;
 }
 /* Active page indicator */
 [data-testid="stPageLink"][aria-current="page"],
 [data-testid="stPageLink"]:has(a[aria-current="page"]) {
-    border-left: 3px solid #E5A431 !important;
-    background: rgba(229, 164, 49, 0.06) !important;
-    border-color: rgba(229, 164, 49, 0.2) !important;
+    border-left: 3px solid #A855F7 !important;
+    background: rgba(168, 85, 247, 0.08) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
 }
 /* Active tab styling */
 [data-testid="stTabs"] button[aria-selected="true"] {
     font-weight: 600 !important;
-    border-bottom: 2px solid #E5A431 !important;
+    border-bottom: 2px solid #A855F7 !important;
 }
 [data-testid="stTabs"] button[aria-selected="false"]:hover {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: #A855F7 !important;
+    opacity: 0.9;
 }
 /* Consistent subheader spacing */
 [data-testid="stSubheader"] {
@@ -157,8 +129,7 @@ hr {
 /* Button hover states */
 [data-testid="stButton"] button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2);
 }
 [data-testid="stButton"] button:active {
     transform: translateY(0px);
@@ -166,23 +137,16 @@ hr {
 }
 /* Expander hover state */
 [data-testid="stExpander"]:hover {
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
 }
 [data-testid="stExpander"] summary {
     transition: color 0.15s ease;
 }
 /* Metric card hover */
 [data-testid="stMetric"]:hover {
-    border-color: rgba(255, 255, 255, 0.12);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    border-color: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06);
 }
-/* Staggered card entrance */
-[data-testid="stHorizontalBlock"] > div:nth-child(1) [data-testid="stMetric"] { animation-delay: 0ms; }
-[data-testid="stHorizontalBlock"] > div:nth-child(2) [data-testid="stMetric"] { animation-delay: 50ms; }
-[data-testid="stHorizontalBlock"] > div:nth-child(3) [data-testid="stMetric"] { animation-delay: 100ms; }
-[data-testid="stHorizontalBlock"] > div:nth-child(4) [data-testid="stMetric"] { animation-delay: 150ms; }
-[data-testid="stHorizontalBlock"] > div:nth-child(5) [data-testid="stMetric"] { animation-delay: 200ms; }
 /* Mobile responsive */
 @media (max-width: 768px) {
     [data-testid="stAppViewBlockContainer"],
@@ -281,7 +245,7 @@ def require_auth():
 # Profile resolution
 # ---------------------------------------------------------------------------
 
-# Page registry: label -> (file_path, icon)
+# Page registry: label → (file_path, icon)
 _ALL_PAGES = {
     "Home": ("app.py", "🏠"),
     "For You": ("pages/5_For_You.py", "🎯"),
@@ -379,7 +343,7 @@ def apply():
             '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">'
             f'{logo_html}'
             '<span style="font-size:15px; font-weight:800; '
-            'font-family:DM Sans,system-ui,sans-serif; '
+            'font-family:Inter,system-ui,sans-serif; '
             'letter-spacing:0.1em; '
             'background:linear-gradient(135deg, #EC4899, #A855F7); '
             '-webkit-background-clip:text; -webkit-text-fill-color:transparent; '

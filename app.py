@@ -114,14 +114,13 @@ for row in raw_cost or []:
 def colored_metric(label, value, color):
     """Render a metric card with a colored value."""
     st.markdown(
-        f'<div style="border:1px solid rgba(255,255,255,0.06); border-radius:10px; '
-        f'padding:16px 20px; margin-bottom:16px; background:#161B26; '
-        f'box-shadow:0 1px 3px rgba(0,0,0,0.3); '
-        f'animation:fadeSlideUp 0.3s ease both;">'
-        f'<p style="font-family:IBM Plex Sans,sans-serif; font-size:0.75rem; font-weight:500; text-transform:uppercase; '
-        f'letter-spacing:0.08em; opacity:0.5; margin:0 0 4px 0;">{label}</p>'
-        f'<p style="font-family:DM Sans,sans-serif; font-size:2rem; font-weight:700; margin:0; color:{color}; '
-        f'font-variant-numeric:tabular-nums;">{value}</p>'
+        f'<div style="border:1px solid rgba(168,85,247,0.15); border-radius:12px; '
+        f'padding:16px 20px; margin-bottom:16px; background:linear-gradient(145deg,#2A3154,#252B45); '
+        f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),'
+        f'inset 0 1px 0 rgba(255,255,255,0.04);">'
+        f'<p style="font-size:0.8rem; font-weight:500; text-transform:uppercase; '
+        f'letter-spacing:0.02em; opacity:0.7; margin:0 0 4px 0;">{label}</p>'
+        f'<p style="font-size:1.8rem; font-weight:700; margin:0; color:{color};">{value}</p>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -267,8 +266,8 @@ try:
             st.markdown(
                 f'<div style="display:flex; align-items:center; gap:16px; padding:12px 16px; '
                 f'margin-bottom:8px; border-radius:10px; '
-                f'background:#161B26; '
-                f'border:1px solid rgba(255,255,255,0.06);">'
+                f'background:linear-gradient(145deg,#2A3154,#252B45); '
+                f'border:1px solid rgba(168,85,247,0.1);">'
                 f'<span style="font-size:1.4rem; font-weight:800; opacity:0.3; min-width:28px;">#{rank}</span>'
                 f'<div style="flex:1; min-width:0;">'
                 f'<div style="display:flex; align-items:baseline; gap:10px; margin-bottom:4px;">'

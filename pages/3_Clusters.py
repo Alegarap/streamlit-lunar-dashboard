@@ -157,7 +157,7 @@ if clusters:
                 "select": "title,source,type,source_date,linear_identifier,source_url",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
-                "limit": "20",
+                "limit": "200",
             })
             if items:
                 df_items = pd.DataFrame(items)

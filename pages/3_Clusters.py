@@ -105,7 +105,7 @@ if clusters:
         ),
         text=[f"{s:.2f}" for s in top["hotness_score"].values[::-1]],
         textposition="outside",
-        textfont=dict(size=12, family="DM Sans"),
+        textfont=dict(size=12, family="Fira Sans"),
     ))
     fig.update_layout(
         height=450,
@@ -114,8 +114,8 @@ if clusters:
         xaxis=dict(range=[0, 1.05]),
         margin=dict(l=10, r=40, t=10, b=40),
         showlegend=False,
-        font=dict(family="DM Sans", size=13),
-        legend=dict(font=dict(size=13, family="DM Sans")),
+        font=dict(family="Fira Sans", size=13),
+        legend=dict(font=dict(size=13, family="Fira Sans")),
     )
     style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)
@@ -203,7 +203,7 @@ with st.expander("Distributions"):
                 xaxis=dict(range=[0, 1]),
                 margin=dict(t=10),
                 showlegend=False,
-                font=dict(family="DM Sans", size=13),
+                font=dict(family="Fira Sans", size=13),
             )
             style_fig(fig)
             st.plotly_chart(fig, use_container_width=True)
@@ -221,7 +221,7 @@ with st.expander("Distributions"):
             fig.update_layout(
                 margin=dict(t=10),
                 showlegend=False,
-                font=dict(family="DM Sans", size=13),
+                font=dict(family="Fira Sans", size=13),
             )
             style_fig(fig)
             st.plotly_chart(fig, use_container_width=True)
@@ -253,7 +253,7 @@ with st.expander("Evaluation Metrics"):
                     color=class_counts.index,
                     color_discrete_map=colors,
                 )
-                fig.update_layout(font=dict(family="DM Sans", size=13))
+                fig.update_layout(font=dict(family="Fira Sans", size=13))
                 style_fig(fig)
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -265,7 +265,7 @@ with st.expander("Evaluation Metrics"):
                     barmode="stack",
                     color_discrete_map=colors,
                 )
-                fig.update_layout(font=dict(family="DM Sans", size=13))
+                fig.update_layout(font=dict(family="Fira Sans", size=13))
                 style_fig(fig)
                 st.plotly_chart(fig, use_container_width=True)
 

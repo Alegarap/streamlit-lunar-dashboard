@@ -39,16 +39,31 @@ WORKFLOW_NAMES = {
 
 
 def style_fig(fig):
-    """Apply transparent backgrounds, readable grid lines, and safe margins."""
+    """Apply consistent chart styling: Fira Sans font, readable grid, safe margins."""
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=60, r=40),
-        legend=dict(font=dict(size=12, family="DM Sans")),
-        font=dict(family="DM Sans", size=12),
+        margin=dict(l=60, r=40, t=40, b=40),
+        legend=dict(
+            font=dict(size=13, family="Fira Sans"),
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0,
+        ),
+        font=dict(family="Fira Sans", size=12),
     )
-    fig.update_xaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
-    fig.update_yaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
+    fig.update_xaxes(
+        gridcolor="rgba(226,232,240,0.12)",
+        gridwidth=1,
+        tickfont=dict(size=12, family="Fira Sans"),
+    )
+    fig.update_yaxes(
+        gridcolor="rgba(226,232,240,0.12)",
+        gridwidth=1,
+        tickfont=dict(size=12, family="Fira Sans"),
+    )
     return fig
 
 

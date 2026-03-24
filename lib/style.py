@@ -16,7 +16,12 @@ from lib.user_profiles import get_profile, all_profiles
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+
+/* Global typography */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
+    font-family: 'Fira Sans', -apple-system, sans-serif !important;
+}
 
 /* Sidebar: hide auto-generated nav */
 [data-testid="stSidebarNav"] {
@@ -36,7 +41,8 @@ CUSTOM_CSS = """
 
 /* Headings */
 h1, h2, h3, [data-testid="stHeading"] {
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: 'Fira Sans', sans-serif !important;
+    font-weight: 600 !important;
 }
 
 /* Metric cards — gradient for contrast */
@@ -49,16 +55,17 @@ h1, h2, h3, [data-testid="stHeading"] {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 [data-testid="stMetricLabel"] {
+    font-family: 'Fira Sans', sans-serif !important;
     font-size: 0.8rem !important;
     font-weight: 500 !important;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     opacity: 0.7;
 }
 [data-testid="stMetricValue"] {
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: 'Fira Code', monospace !important;
     font-size: 1.8rem !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     font-variant-numeric: tabular-nums;
 }
 [data-testid="stMetricDelta"] {
@@ -174,6 +181,14 @@ hr {
     }
     [data-testid="stMetricLabel"] {
         font-size: 0.7rem !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
     }
 }
 </style>
@@ -358,7 +373,7 @@ def apply():
             '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">'
             f'{logo_html}'
             '<span style="font-size:15px; font-weight:800; '
-            'font-family:DM Sans,system-ui,sans-serif; '
+            'font-family:Fira Sans,system-ui,sans-serif; '
             'letter-spacing:0.1em; '
             'background:linear-gradient(135deg, #EC4899, #A855F7); '
             '-webkit-background-clip:text; -webkit-text-fill-color:transparent; '

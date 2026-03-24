@@ -129,7 +129,7 @@ _CHART_LEGEND = dict(
     y=1.02,
     xanchor="left",
     x=0,
-    font=dict(size=13, family="DM Sans"),
+    font=dict(size=13, family="Fira Sans"),
 )
 
 
@@ -139,7 +139,7 @@ def _polish_chart(fig, title: str):
     fig.update_layout(
         title=dict(
             text=title,
-            font=dict(size=16, family="DM Sans", color="white"),
+            font=dict(size=16, family="Fira Sans", color="white"),
             x=0.01,
             y=0.95,
         ),
@@ -147,9 +147,9 @@ def _polish_chart(fig, title: str):
         height=400,
         xaxis_title=None,
         yaxis_title="Items",
-        yaxis_title_font=dict(size=13, family="DM Sans"),
-        xaxis_tickfont=dict(size=12, family="DM Sans"),
-        yaxis_tickfont=dict(size=12, family="DM Sans"),
+        yaxis_title_font=dict(size=13, family="Fira Sans"),
+        xaxis_tickfont=dict(size=12, family="Fira Sans"),
+        yaxis_tickfont=dict(size=12, family="Fira Sans"),
     )
     fig.update_traces(textposition="none")
     return fig

@@ -119,9 +119,9 @@ def colored_metric(label, value, color):
         f'padding:16px 20px; margin-bottom:16px; background:linear-gradient(145deg,#2A3154,#252B45); '
         f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),'
         f'inset 0 1px 0 rgba(255,255,255,0.04);">'
-        f'<p style="font-size:0.8rem; font-weight:500; text-transform:uppercase; '
-        f'letter-spacing:0.06em; opacity:0.7; margin:0 0 4px 0;">{label}</p>'
-        f'<p style="font-family:DM Sans,sans-serif; font-size:1.8rem; font-weight:700; margin:0; color:{color}; '
+        f'<p style="font-family:Fira Sans,sans-serif; font-size:0.8rem; font-weight:500; text-transform:uppercase; '
+        f'letter-spacing:0.08em; opacity:0.7; margin:0 0 4px 0;">{label}</p>'
+        f'<p style="font-family:Fira Code,monospace; font-size:1.8rem; font-weight:600; margin:0; color:{color}; '
         f'font-variant-numeric:tabular-nums;">{value}</p>'
         f'</div>',
         unsafe_allow_html=True,
@@ -236,7 +236,7 @@ st.divider()
 col_ing, col_cost = st.columns(2)
 
 with col_ing:
-    with st.expander("Ingestion by Source", expanded=False):
+    with st.expander("\U0001f4ca Ingestion by Source", expanded=False):
         if ingestion_by_source:
             rows = []
             for src in SOURCE_ORDER:
@@ -265,7 +265,7 @@ with col_ing:
             st.caption("No ingestion data for this period.")
 
 with col_cost:
-    with st.expander("Cost by Workflow", expanded=False):
+    with st.expander("\U0001f4b0 Cost by Workflow", expanded=False):
         if cost_by_key:
             rows = []
             for key, vals in cost_by_key.items():

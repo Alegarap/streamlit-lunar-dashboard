@@ -117,11 +117,11 @@ if "api_type" in df.columns:
     st.caption(" · ".join(parts))
 
 # --- Chart helper ---
-CHART_FONT = dict(family="DM Sans, sans-serif", size=13)
+CHART_FONT = dict(family="Fira Sans, sans-serif", size=13)
 
 
 def _style_chart(fig, height=380, dollar_y=True):
-    """Style a plotly figure with DM Sans, legend size 13, transparent bg."""
+    """Style a plotly figure with Fira Sans, legend size 13, transparent bg."""
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",

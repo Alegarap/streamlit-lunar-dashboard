@@ -129,13 +129,13 @@ with col1:
         fig = px.area(
             daily, x="day", y="total_cost",
             title="Daily Spend",
-            labels={"day": "Date", "total_cost": "Cost ($)"},
+            labels={"day": "Date", "total_cost": "Cost (USD)"},
         )
     else:
         fig = px.bar(
             daily, x="day", y="total_cost",
             title="Daily Spend",
-            labels={"day": "Date", "total_cost": "Cost ($)"},
+            labels={"day": "Date", "total_cost": "Cost (USD)"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")
     style_fig(fig)
@@ -150,7 +150,7 @@ with col2:
             by_wf, x="total_cost", y="workflow",
             orientation="h",
             title="Total Spend by Workflow",
-            labels={"total_cost": "Cost ($)", "workflow": "Workflow"},
+            labels={"total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
         style_fig(fig)
         st.plotly_chart(fig, use_container_width=True)
@@ -169,7 +169,7 @@ if "model" in df.columns:
 
     rename_map = {
         "model": "Model",
-        "total_cost": "Total Cost ($)",
+        "total_cost": "Total Cost (USD)",
         "request_count": "Requests",
         "total_input_tokens": "Input Tokens",
         "total_output_tokens": "Output Tokens",
@@ -179,7 +179,7 @@ if "model" in df.columns:
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Total Cost ($)": st.column_config.NumberColumn(format="$%.4f"),
+            "Total Cost (USD)": st.column_config.NumberColumn(format="%.4f USD"),
         },
     )
 
@@ -191,13 +191,13 @@ if "workflow" in df.columns:
         fig = px.area(
             daily_wf, x="day", y="total_cost", color="workflow",
             title="Cost Breakdown Over Time",
-            labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
+            labels={"day": "Date", "total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
     else:
         fig = px.bar(
             daily_wf, x="day", y="total_cost", color="workflow",
             title="Cost Breakdown Over Time",
-            labels={"day": "Date", "total_cost": "Cost ($)", "workflow": "Workflow"},
+            labels={"day": "Date", "total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")
     style_fig(fig)

@@ -216,7 +216,7 @@ else:
                 "select": "title,source,type,source_date,source_url,linear_identifier",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
-                "limit": "20",
+                "limit": "200",
             })
             if cluster_items:
                 df = pd.DataFrame(cluster_items)

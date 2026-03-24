@@ -185,7 +185,7 @@ with col_cost:
         fig = px.bar(
             df_cost, x="Cost", y="Workflow",
             orientation="h",
-            labels={"Cost": "Cost ($)", "Workflow": ""},
+            labels={"Cost": "Cost (USD)", "Workflow": ""},
         )
         style_fig(fig)
         fig.update_layout(height=350)
@@ -297,7 +297,7 @@ st.divider()
 st.markdown("### Recent Items")
 try:
     latest = sb.query_fresh("items", {
-        "select": "created_at,source,type,title",
+        "select": "created_at,source,type,title,source_url",
         "order": "created_at.desc",
         "limit": "10",
     })
@@ -308,10 +308,16 @@ try:
                 created = created.replace("T", " ").split(".")[0][:16]
             source = item.get("source", "")
             item_type = item.get("type", "")
+            url = item.get("source_url", "")
             title = item.get("title", "Untitled")
+            title_html = (
+                f'<a href="{url}" target="_blank" style="color:inherit; text-decoration:none; '
+                f'border-bottom:1px solid rgba(255,255,255,0.2);">{title}</a>'
+                if url else title
+            )
             st.markdown(
                 f"<small><code>{created}</code> &nbsp; "
-                f"<b>{source}</b> · {item_type} &nbsp; {title}</small>",
+                f"<b>{source}</b> · {item_type} &nbsp; {title_html}</small>",
                 unsafe_allow_html=True,
             )
     else:

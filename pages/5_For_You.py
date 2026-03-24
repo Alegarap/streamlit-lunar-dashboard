@@ -43,8 +43,8 @@ if is_all:
     st.caption("Showing all domains (Engineering view)")
 else:
     pills_html = "".join(
-        f'<span style="display:inline-block; background:rgba(168,85,247,0.15); '
-        f'border:1px solid rgba(168,85,247,0.25); border-radius:20px; '
+        f'<span style="display:inline-block; background:rgba(229,164,49,0.15); '
+        f'border:1px solid rgba(229,164,49,0.25); border-radius:20px; '
         f'padding:4px 12px; font-size:0.75rem; margin:2px 4px;">{d}</span>'
         for d in user_domains
     )
@@ -92,13 +92,14 @@ recent_items = sb.query_fresh("items", {
 
 def colored_metric(label, value, color):
     st.markdown(
-        f'<div style="border:1px solid rgba(168,85,247,0.15); border-radius:12px; '
-        f'padding:16px 20px; margin-bottom:16px; background:linear-gradient(145deg,#2A3154,#252B45); '
-        f'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2),'
-        f'inset 0 1px 0 rgba(255,255,255,0.04);">'
-        f'<p style="font-size:0.8rem; font-weight:500; text-transform:uppercase; '
-        f'letter-spacing:0.06em; opacity:0.7; margin:0 0 4px 0;">{label}</p>'
-        f'<p style="font-size:1.8rem; font-weight:700; margin:0; color:{color};">{value}</p>'
+        f'<div style="border:1px solid rgba(255,255,255,0.06); border-radius:10px; '
+        f'padding:16px 20px; margin-bottom:16px; background:#161B26; '
+        f'box-shadow:0 1px 3px rgba(0,0,0,0.3); '
+        f'animation:fadeSlideUp 0.3s ease both;">'
+        f'<p style="font-family:IBM Plex Sans,sans-serif; font-size:0.75rem; font-weight:500; text-transform:uppercase; '
+        f'letter-spacing:0.08em; opacity:0.5; margin:0 0 4px 0;">{label}</p>'
+        f'<p style="font-family:DM Sans,sans-serif; font-size:2rem; font-weight:700; margin:0; color:{color}; '
+        f'font-variant-numeric:tabular-nums;">{value}</p>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -188,8 +189,8 @@ else:
         st.markdown(
             f'<div style="display:flex; align-items:center; gap:16px; padding:12px 16px; '
             f'margin-bottom:8px; border-radius:10px; '
-            f'background:linear-gradient(145deg,#2A3154,#252B45); '
-            f'border:1px solid rgba(168,85,247,0.1);">'
+            f'background:#161B26; '
+            f'border:1px solid rgba(255,255,255,0.06);">'
             f'<span style="font-size:1.4rem; font-weight:800; opacity:0.3; min-width:28px;">#{rank}</span>'
             f'<div style="flex:1; min-width:0;">'
             f'<div style="display:flex; align-items:baseline; gap:10px; margin-bottom:4px;">'
@@ -298,8 +299,8 @@ else:
         for d in momentum_data[:3]:
             st.markdown(
                 f'<div style="padding:12px 16px; margin-bottom:8px; border-radius:10px; '
-                f'background:linear-gradient(145deg,#2A3154,#252B45); '
-                f'border:1px solid rgba(168,85,247,0.1);">'
+                f'background:#161B26; '
+                f'border:1px solid rgba(255,255,255,0.06);">'
                 f'<div style="font-weight:700; margin-bottom:4px;">{d["label"]}</div>'
                 f'<div style="color:#22C55E; font-size:0.85rem; font-weight:600;">'
                 f'+{d["recent"]} items this week</div>'

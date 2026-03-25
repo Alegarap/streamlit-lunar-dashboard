@@ -113,6 +113,27 @@ def _send_to_linear(item):
     st.success(f"Created {result.get('identifier', '')} in Linear")
 
 
+def _downgrade_headings(text):
+    """Downgrade markdown headings so descriptions don't compete with the title.
+
+    # → ###, ## → ####, ### → #####, etc.
+    """
+    import re
+    def _shift(m):
+        hashes = m.group(1)
+        rest = m.group(2)
+        new_level = min(len(hashes) + 2, 6)
+        return "#" * new_level + rest
+    return re.sub(r'^(#{1,4})([ \t])', _shift, text, flags=re.MULTILINE)
+
+
+def _linear_issue_url(identifier):
+    """Build the Linear issue URL from an identifier like THE-123."""
+    if not identifier:
+        return ""
+    return f"https://linear.app/lunar-ventures/issue/{identifier}"
+
+
 def _render_item_row(item, key_suffix):
     """Render a single item as an expander row with description and Send to Linear."""
     title = item.get("title", "Untitled")
@@ -122,9 +143,12 @@ def _render_item_row(item, key_suffix):
     linear_id = item.get("linear_identifier")
     source_url = item.get("source_url", "")
 
+    # Expander label: title + source
+    source_label = "Hacker News" if source == "hackernews" else source.title() if source else ""
+    header = f"{title}  ·  {source_label}" if source_label else title
+
     # Build the header line with badges
     badges = f"{_source_badge(source)} {_type_badge(item_type)} {_linear_badge(linear_id)}"
-    header = f"{title}"
 
     with st.expander(header, expanded=False):
         # Badge row + date
@@ -134,10 +158,13 @@ def _render_item_row(item, key_suffix):
         with cols[1]:
             st.caption(date)
 
-        # Description
+        # Title as heading inside the expanded view
+        st.markdown(f"**{title}**")
+
+        # Description (with downgraded headings)
         desc = item.get("description") or item.get("summary") or ""
         if desc:
-            st.markdown(desc)
+            st.markdown(_downgrade_headings(desc))
         else:
             st.caption("No description available.")
 
@@ -145,8 +172,11 @@ def _render_item_row(item, key_suffix):
         if source_url:
             st.markdown(f"[Open source ↗]({source_url})")
 
-        # Send to Linear button (only if not already there)
-        if not linear_id:
+        # Linear: link if already there, button if not
+        if linear_id:
+            url = _linear_issue_url(linear_id)
+            st.markdown(f"[Open in Linear ↗]({url})  `{linear_id}`")
+        else:
             if st.button("Send to Linear", key=f"send_{key_suffix}", type="secondary"):
                 _send_to_linear(item)
                 st.rerun()
@@ -212,10 +242,14 @@ with st.spinner("Loading your feed..."):
 matched_cluster_ids = {c["id"] for c in all_clusters if _cluster_matches(c)}
 matched_clusters = [c for c in all_clusters if c["id"] in matched_cluster_ids]
 
+# Filter to user's domains, exclude arxiv deals (only themes from arxiv)
 domain_items = [
     i for i in recent_items
-    if i.get("cluster_id") in matched_cluster_ids or is_all
-    or any(d in (i.get("title") or "").lower() for d in [d.lower() for d in user_domains])
+    if not (i.get("source") == "arxiv" and i.get("type") == "deal")
+    and (
+        i.get("cluster_id") in matched_cluster_ids or is_all
+        or any(d in (i.get("title") or "").lower() for d in [d.lower() for d in user_domains])
+    )
 ]
 
 # ---------------------------------------------------------------------------
@@ -313,6 +347,12 @@ else:
                 "order": "source_date.desc.nullslast",
                 "limit": "100",
             }) or []
+
+            # Exclude arxiv deals (only themes from arxiv)
+            cluster_items = [
+                i for i in cluster_items
+                if not (i.get("source") == "arxiv" and i.get("type") == "deal")
+            ]
 
             if not cluster_items:
                 st.caption("No items found.")

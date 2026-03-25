@@ -159,7 +159,7 @@ def _render_item_row(item, key_suffix):
             st.caption(date)
 
         # Title as heading inside the expanded view
-        st.markdown(f"**{title}**")
+        st.markdown(f"# {title}")
 
         # Description (with downgraded headings)
         desc = item.get("description") or item.get("summary") or ""

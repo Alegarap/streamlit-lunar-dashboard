@@ -504,50 +504,55 @@ if _use_semantic:
 
 st.markdown("---")
 
-# Use custom HTML buttons as tab selector instead of st.tabs for full style control
+# Custom tab selector with big headings
 if "active_tab" not in st.session_state:
     st.session_state["active_tab"] = "recent"
 
 _active = st.session_state["active_tab"]
-_c_recent = "#A855F7" if _active == "recent" else "rgba(255,255,255,0.5)"
-_c_clusters = "#A855F7" if _active == "clusters" else "rgba(255,255,255,0.5)"
-_border_recent = "3px solid #A855F7" if _active == "recent" else "3px solid transparent"
-_border_clusters = "3px solid #A855F7" if _active == "clusters" else "3px solid transparent"
 
-col_tab1, col_tab2, col_spacer = st.columns([2, 2, 4])
-with col_tab1:
-    st.markdown(
-        f'<div style="border-bottom:{_border_recent}; padding-bottom:10px; cursor:pointer;">'
-        f'<span style="font-size:1.5rem; font-weight:700; color:{_c_recent};">'
-        f'📋 Recent Items ({len(domain_items)})</span></div>',
-        unsafe_allow_html=True,
-    )
-    if st.button("ㅤ", key="tab_recent_btn", label_visibility="collapsed"):
-        st.session_state["active_tab"] = "recent"
-        st.rerun()
-with col_tab2:
-    st.markdown(
-        f'<div style="border-bottom:{_border_clusters}; padding-bottom:10px; cursor:pointer;">'
-        f'<span style="font-size:1.5rem; font-weight:700; color:{_c_clusters};">'
-        f'🔬 Your Clusters ({len(matched_clusters)})</span></div>',
-        unsafe_allow_html=True,
-    )
-    if st.button("ㅤ", key="tab_clusters_btn", label_visibility="collapsed"):
-        st.session_state["active_tab"] = "clusters"
-        st.rerun()
-
-# Hide the invisible buttons
+# Style the tab buttons to look like heading tabs
 st.markdown(
     '<style>'
-    'button[key="tab_recent_btn"], button[key="tab_clusters_btn"] {'
-    '  position: absolute; top: 0; left: 0; width: 100%; height: 100%;'
-    '  opacity: 0; cursor: pointer;'
+    '.tab-selector button {'
+    '  background: none !important; border: none !important;'
+    '  border-bottom: 3px solid transparent !important;'
+    '  border-radius: 0 !important; box-shadow: none !important;'
+    '  font-size: 1.5rem !important; font-weight: 700 !important;'
+    '  padding: 8px 4px 12px 4px !important; margin-right: 24px !important;'
+    '  color: rgba(255,255,255,0.4) !important; transition: all 0.15s ease;'
+    '}'
+    '.tab-selector button:hover {'
+    '  color: #C084FC !important; border-bottom-color: rgba(168,85,247,0.3) !important;'
+    '}'
+    '.tab-selector button[kind="primary"] {'
+    '  color: #A855F7 !important; border-bottom: 3px solid #A855F7 !important;'
     '}'
     '</style>',
     unsafe_allow_html=True,
 )
 
-st.markdown('<div style="border-bottom:2px solid rgba(168,85,247,0.15); margin-top:-12px; margin-bottom:16px;"></div>', unsafe_allow_html=True)
+with st.container():
+    st.markdown('<div class="tab-selector">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([3, 3, 6])
+    with col1:
+        if st.button(
+            f"📋 Recent Items ({len(domain_items)})",
+            key="tab_recent_btn",
+            type="primary" if _active == "recent" else "secondary",
+        ):
+            st.session_state["active_tab"] = "recent"
+            st.rerun()
+    with col2:
+        if st.button(
+            f"🔬 Your Clusters ({len(matched_clusters)})",
+            key="tab_clusters_btn",
+            type="primary" if _active == "clusters" else "secondary",
+        ):
+            st.session_state["active_tab"] = "clusters"
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="border-bottom:2px solid rgba(168,85,247,0.12); margin-bottom:16px;"></div>', unsafe_allow_html=True)
 
 # --- Tab: Recent Items ---
 if _active == "recent":

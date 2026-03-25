@@ -25,6 +25,16 @@ profile = st.session_state.get("user_profile", {})
 user_domains = profile.get("domains", [])
 is_all = user_domains == ["all"]
 
+# Bright, readable source colors for dark backgrounds
+SOURCE_COLORS = {
+    "linear": "#818CF8",       # Bright indigo
+    "hackernews": "#FB923C",   # Bright orange
+    "arxiv": "#FACC15",        # Yellow
+    "conference": "#F472B6",   # Pink
+    "tigerclaw": "#A78BFA",    # Violet
+    "other": "#94A3B8",        # Slate
+}
+
 SOURCE_ICONS = {
     "linear": "🔷",
     "hackernews": "🟠",
@@ -39,7 +49,7 @@ TYPE_COLORS = {
 
 
 def _source_badge(source):
-    color = COLORS.get(source, COLORS["other"])
+    color = SOURCE_COLORS.get(source, SOURCE_COLORS["other"])
     icon = SOURCE_ICONS.get(source, "")
     return (
         f'<span style="display:inline-block; background:{color}18; color:{color}; '
@@ -198,9 +208,10 @@ def _render_item_row(item, key_suffix):
     linear_id = item.get("linear_identifier")
     source_url = item.get("source_url", "")
 
-    # Expander label: title + source
+    # Expander label: title + source with icon for quick scanning
     source_label = "Hacker News" if source == "hackernews" else source.title() if source else ""
-    header = f"{title}  ·  {source_label}" if source_label else title
+    source_icon = SOURCE_ICONS.get(source, "")
+    header = f"{title}  ·  {source_icon} {source_label}" if source_label else title
 
     # Build the header line with badges
     badges = f"{_source_badge(source)} {_type_badge(item_type)} {_linear_badge(linear_id)}"

@@ -504,35 +504,53 @@ if _use_semantic:
 
 st.markdown("---")
 
-# Custom CSS for tab accent color
+# Use custom HTML buttons as tab selector instead of st.tabs for full style control
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = "recent"
+
+_active = st.session_state["active_tab"]
+_c_recent = "#A855F7" if _active == "recent" else "rgba(255,255,255,0.5)"
+_c_clusters = "#A855F7" if _active == "clusters" else "rgba(255,255,255,0.5)"
+_border_recent = "3px solid #A855F7" if _active == "recent" else "3px solid transparent"
+_border_clusters = "3px solid #A855F7" if _active == "clusters" else "3px solid transparent"
+
+col_tab1, col_tab2, col_spacer = st.columns([2, 2, 4])
+with col_tab1:
+    st.markdown(
+        f'<div style="border-bottom:{_border_recent}; padding-bottom:10px; cursor:pointer;">'
+        f'<span style="font-size:1.5rem; font-weight:700; color:{_c_recent};">'
+        f'📋 Recent Items ({len(domain_items)})</span></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("ㅤ", key="tab_recent_btn", label_visibility="collapsed"):
+        st.session_state["active_tab"] = "recent"
+        st.rerun()
+with col_tab2:
+    st.markdown(
+        f'<div style="border-bottom:{_border_clusters}; padding-bottom:10px; cursor:pointer;">'
+        f'<span style="font-size:1.5rem; font-weight:700; color:{_c_clusters};">'
+        f'🔬 Your Clusters ({len(matched_clusters)})</span></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("ㅤ", key="tab_clusters_btn", label_visibility="collapsed"):
+        st.session_state["active_tab"] = "clusters"
+        st.rerun()
+
+# Hide the invisible buttons
 st.markdown(
     '<style>'
-    '[data-testid="stTabs"] [data-baseweb="tab-list"] {'
-    '  gap: 0; border-bottom: 2px solid rgba(168,85,247,0.15);'
-    '}'
-    '[data-testid="stTabs"] [data-baseweb="tab"] {'
-    '  padding: 12px 24px; font-weight: 600;'
-    '  border-bottom: 3px solid transparent; transition: all 0.15s ease;'
-    '}'
-    '[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {'
-    '  border-bottom: 3px solid #A855F7 !important;'
-    '  color: #A855F7 !important;'
-    '}'
-    '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
-    '  color: #C084FC;'
+    'button[key="tab_recent_btn"], button[key="tab_clusters_btn"] {'
+    '  position: absolute; top: 0; left: 0; width: 100%; height: 100%;'
+    '  opacity: 0; cursor: pointer;'
     '}'
     '</style>',
     unsafe_allow_html=True,
 )
 
-tab_recent, tab_clusters = st.tabs([
-    "📋  Recent Items",
-    "🔬  Your Clusters",
-])
+st.markdown('<div style="border-bottom:2px solid rgba(168,85,247,0.15); margin-top:-12px; margin-bottom:16px;"></div>', unsafe_allow_html=True)
 
-# --- Tab 1: Recent Items ---
-with tab_recent:
-    st.markdown(f"### 📋 Recent Items — {len(domain_items)}")
+# --- Tab: Recent Items ---
+if _active == "recent":
     if not domain_items:
         st.info("No recent items match your domains.")
     else:
@@ -561,9 +579,8 @@ with tab_recent:
                 if len(filtered) > 50:
                     st.caption(f"Showing 50 of {len(filtered)} items")
 
-# --- Tab 2: Your Clusters ---
-with tab_clusters:
-    st.markdown(f"### 🔬 Your Clusters — {len(matched_clusters)}")
+# --- Tab: Your Clusters ---
+if _active == "clusters":
     if not matched_clusters:
         st.info("No clusters match your domains yet.")
     else:

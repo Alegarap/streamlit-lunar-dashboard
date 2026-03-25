@@ -45,6 +45,7 @@ CUSTOM_CSS = """
     border: 1px solid rgba(168, 85, 247, 0.15);
     border-radius: 12px;
     padding: 16px 20px;
+    min-height: 110px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }

@@ -504,58 +504,34 @@ if _use_semantic:
 
 st.markdown("---")
 
-# Custom tab selector with big headings
-if "active_tab" not in st.session_state:
-    st.session_state["active_tab"] = "recent"
-
-_active = st.session_state["active_tab"]
-
-# Style the tab buttons to look like heading tabs
+# Tabs with purple accent
 st.markdown(
     '<style>'
-    '.tab-selector button {'
-    '  background: none !important; border: none !important;'
-    '  border-bottom: 3px solid transparent !important;'
-    '  border-radius: 0 !important; box-shadow: none !important;'
-    '  font-size: 1.5rem !important; font-weight: 700 !important;'
-    '  padding: 8px 4px 12px 4px !important; margin-right: 24px !important;'
-    '  color: rgba(255,255,255,0.4) !important; transition: all 0.15s ease;'
+    '[data-testid="stTabs"] [data-baseweb="tab-list"] {'
+    '  gap: 0; border-bottom: 2px solid rgba(168,85,247,0.15);'
     '}'
-    '.tab-selector button:hover {'
-    '  color: #C084FC !important; border-bottom-color: rgba(168,85,247,0.3) !important;'
+    '[data-testid="stTabs"] [data-baseweb="tab"] {'
+    '  padding: 12px 24px; font-weight: 600;'
+    '  border-bottom: 3px solid transparent; transition: all 0.15s ease;'
     '}'
-    '.tab-selector button[kind="primary"] {'
-    '  color: #A855F7 !important; border-bottom: 3px solid #A855F7 !important;'
+    '[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {'
+    '  border-bottom: 3px solid #A855F7 !important;'
+    '  color: #A855F7 !important;'
+    '}'
+    '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
+    '  color: #C084FC;'
     '}'
     '</style>',
     unsafe_allow_html=True,
 )
 
-with st.container():
-    st.markdown('<div class="tab-selector">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([3, 3, 6])
-    with col1:
-        if st.button(
-            f"📋 Recent Items ({len(domain_items)})",
-            key="tab_recent_btn",
-            type="primary" if _active == "recent" else "secondary",
-        ):
-            st.session_state["active_tab"] = "recent"
-            st.rerun()
-    with col2:
-        if st.button(
-            f"🔬 Your Clusters ({len(matched_clusters)})",
-            key="tab_clusters_btn",
-            type="primary" if _active == "clusters" else "secondary",
-        ):
-            st.session_state["active_tab"] = "clusters"
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+tab_recent, tab_clusters = st.tabs([
+    f"📋 Recent Items ({len(domain_items)})",
+    f"🔬 Your Clusters ({len(matched_clusters)})",
+])
 
-st.markdown('<div style="border-bottom:2px solid rgba(168,85,247,0.12); margin-bottom:16px;"></div>', unsafe_allow_html=True)
-
-# --- Tab: Recent Items ---
-if _active == "recent":
+# --- Tab 1: Recent Items ---
+with tab_recent:
     if not domain_items:
         st.info("No recent items match your domains.")
     else:
@@ -584,8 +560,8 @@ if _active == "recent":
                 if len(filtered) > 50:
                     st.caption(f"Showing 50 of {len(filtered)} items")
 
-# --- Tab: Your Clusters ---
-if _active == "clusters":
+# --- Tab 2: Your Clusters ---
+with tab_clusters:
     if not matched_clusters:
         st.info("No clusters match your domains yet.")
     else:

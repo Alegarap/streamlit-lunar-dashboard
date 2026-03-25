@@ -428,12 +428,24 @@ with st.spinner("Loading your feed..."):
                 "limit": "1000",
             }) or []
 
-            # Items match if they're in a matched cluster
-            domain_items = [
-                i for i in recent_items
-                if not (i.get("source") == "arxiv" and i.get("type") == "deal")
-                and i.get("cluster_id") in matched_cluster_ids
-            ]
+            # Items match if:
+            # 1. They belong to a semantically matched cluster, OR
+            # 2. They're unclustered but match user domains by keyword
+            #    (77% of recent items are unclustered, so this catches them)
+            domain_lower = [d.lower() for d in user_domains]
+
+            domain_items = []
+            for i in recent_items:
+                if i.get("source") == "arxiv" and i.get("type") == "deal":
+                    continue
+                cid = i.get("cluster_id")
+                if cid and cid in matched_cluster_ids:
+                    domain_items.append(i)
+                elif not cid:
+                    # Unclustered: keyword match on title + summary
+                    text = ((i.get("title") or "") + " " + (i.get("summary") or "")).lower()
+                    if any(d in text for d in domain_lower):
+                        domain_items.append(i)
 
         except Exception as e:
             # Fallback to non-semantic if RPCs fail

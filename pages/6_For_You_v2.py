@@ -151,12 +151,44 @@ def _render_item_row(item, key_suffix):
     badges = f"{_source_badge(source)} {_type_badge(item_type)} {_linear_badge(linear_id)}"
 
     with st.expander(header, expanded=False):
-        # Badge row + date
-        cols = st.columns([5, 1])
-        with cols[0]:
-            st.markdown(badges, unsafe_allow_html=True)
-        with cols[1]:
-            st.caption(date)
+        # Badge row + action button on same line
+        if linear_id:
+            linear_url = _linear_issue_url(linear_id)
+            action_html = (
+                f'<a href="{linear_url}" target="_blank" style="'
+                f'display:inline-flex; align-items:center; gap:5px; '
+                f'background:linear-gradient(135deg,#6366F1,#818CF8); color:white; '
+                f'border:none; border-radius:6px; padding:5px 14px; '
+                f'font-size:0.75rem; font-weight:600; text-decoration:none; '
+                f'box-shadow:0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2); '
+                f'transition:all 0.15s ease; cursor:pointer; white-space:nowrap;'
+                f'" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(99,102,241,0.6),0 2px 4px rgba(0,0,0,0.3)\';this.style.transform=\'translateY(-1px)\'"'
+                f' onmouseout="this.style.boxShadow=\'0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2)\';this.style.transform=\'none\'"'
+                f'>Open in Linear ↗ {linear_id}</a>'
+            )
+        else:
+            action_html = ""
+
+        badge_row = (
+            f'<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">'
+            f'<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">'
+            f'{badges}'
+            f'<span style="font-size:0.75rem; opacity:0.45; margin-left:4px;">{date}</span>'
+            f'</div>'
+            f'{action_html}'
+            f'</div>'
+        )
+        st.markdown(badge_row, unsafe_allow_html=True)
+
+        # Send to Linear button (Streamlit widget, only if not in Linear)
+        if not linear_id:
+            if st.button(
+                "\U0001f680 Send to Linear",
+                key=f"send_{key_suffix}",
+                type="primary",
+            ):
+                _send_to_linear(item)
+                st.rerun()
 
         # Title as heading inside the expanded view
         st.markdown(f"## {title}")
@@ -171,15 +203,6 @@ def _render_item_row(item, key_suffix):
         # Source link
         if source_url:
             st.markdown(f"[Open source ↗]({source_url})")
-
-        # Linear: link if already there, button if not
-        if linear_id:
-            url = _linear_issue_url(linear_id)
-            st.markdown(f"[Open in Linear ↗]({url})  `{linear_id}`")
-        else:
-            if st.button("Send to Linear", key=f"send_{key_suffix}", type="secondary"):
-                _send_to_linear(item)
-                st.rerun()
 
 
 def _cluster_matches(c):

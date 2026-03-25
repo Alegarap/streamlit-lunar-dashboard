@@ -66,19 +66,19 @@ def _get_openrouter_key():
     return key or os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
 
 
-def _expand_domain_with_ai(domain, existing_domains):
+def _expand_domain_with_ai(domain):
     """Use AI to suggest adjacent domains related to a given interest."""
     key = _get_openrouter_key()
     if not key:
         return [domain]
 
     prompt = (
-        f"The user is adding '{domain}' as an investment interest domain. "
-        f"Their existing domains are: {', '.join(existing_domains)}. "
-        f"Suggest 3-6 specific adjacent sub-domains or related fields that would be "
-        f"relevant for a deep-tech venture capital investor interested in '{domain}'. "
-        f"Return ONLY a JSON array of short lowercase strings, no explanation. "
-        f"Example: [\"genomics\", \"proteomics\", \"drug discovery\", \"clinical AI\"]"
+        f"I'm adding '{domain}' as a topic of interest for sourcing deep-tech startups. "
+        f"What are 4-6 specific sub-topics, adjacent fields, or related technology areas "
+        f"that fall under or closely relate to '{domain}'? "
+        f"Focus narrowly on what '{domain}' actually means — don't drift into unrelated areas. "
+        f"Return ONLY a JSON array of short lowercase strings. No explanation, no markdown. "
+        f"Example for 'robotics': [\"autonomous navigation\", \"manipulation\", \"swarm intelligence\", \"sensor fusion\", \"embodied AI\"]"
     )
 
     body = json.dumps({
@@ -252,7 +252,7 @@ if st.button("Add", type="primary", key="add_domain_btn"):
 
         if use_ai:
             with st.spinner(f"Finding domains related to '{clean}'..."):
-                suggestions = _expand_domain_with_ai(clean, all_current)
+                suggestions = _expand_domain_with_ai(clean)
 
             # Always include the original term
             if clean not in suggestions:

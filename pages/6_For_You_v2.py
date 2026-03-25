@@ -151,40 +151,54 @@ def _render_item_row(item, key_suffix):
     badges = f"{_source_badge(source)} {_type_badge(item_type)} {_linear_badge(linear_id)}"
 
     with st.expander(header, expanded=False):
-        # Badge row + action button on same line
-        if linear_id:
-            linear_url = _linear_issue_url(linear_id)
-            action_html = (
-                f'<a href="{linear_url}" target="_blank" style="'
-                f'display:inline-flex; align-items:center; gap:5px; '
-                f'background:linear-gradient(135deg,#6366F1,#818CF8); color:white; '
-                f'border:none; border-radius:6px; padding:5px 14px; '
-                f'font-size:0.75rem; font-weight:600; text-decoration:none; '
-                f'box-shadow:0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2); '
-                f'transition:all 0.15s ease; cursor:pointer; white-space:nowrap;'
-                f'" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(99,102,241,0.6),0 2px 4px rgba(0,0,0,0.3)\';this.style.transform=\'translateY(-1px)\'"'
-                f' onmouseout="this.style.boxShadow=\'0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2)\';this.style.transform=\'none\'"'
-                f'>Open in Linear ↗ {linear_id}</a>'
-            )
-        else:
-            action_html = ""
-
+        # Badges row
         badge_row = (
-            f'<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">'
             f'<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">'
             f'{badges}'
             f'<span style="font-size:0.75rem; opacity:0.45; margin-left:4px;">{date}</span>'
             f'</div>'
-            f'{action_html}'
-            f'</div>'
         )
         st.markdown(badge_row, unsafe_allow_html=True)
 
-        # Send to Linear button (Streamlit widget, only if not in Linear)
-        if not linear_id:
+        # Action button — consistent placement below badges with padding
+        _btn_style = (
+            'display:inline-flex; align-items:center; gap:6px; '
+            'border:none; border-radius:8px; padding:7px 16px; '
+            'font-size:0.8rem; font-weight:600; text-decoration:none; '
+            'transition:all 0.15s ease; cursor:pointer; white-space:nowrap; '
+            'margin-top:10px;'
+        )
+        _hover_js = (
+            "this.style.transform='translateY(-1px)';"
+            "this.style.boxShadow='{hover_shadow}';"
+        )
+        _unhover_js = (
+            "this.style.transform='none';"
+            "this.style.boxShadow='{base_shadow}';"
+        )
+
+        if linear_id:
+            linear_url = _linear_issue_url(linear_id)
+            base_shadow = '0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2)'
+            hover_shadow = '0 4px 12px rgba(99,102,241,0.6),0 2px 4px rgba(0,0,0,0.3)'
+            st.markdown(
+                f'<a href="{linear_url}" target="_blank" style="'
+                f'{_btn_style}'
+                f'background:linear-gradient(135deg,#6366F1,#818CF8); color:white; '
+                f'box-shadow:{base_shadow};'
+                f'" onmouseover="{_hover_js.format(hover_shadow=hover_shadow)}"'
+                f' onmouseout="{_unhover_js.format(base_shadow=base_shadow)}"'
+                f'>\U0001f50d Open in Linear</a>',
+                unsafe_allow_html=True,
+            )
+        else:
+            base_shadow = '0 2px 6px rgba(168,85,247,0.4),0 1px 2px rgba(0,0,0,0.2)'
+            hover_shadow = '0 4px 12px rgba(168,85,247,0.6),0 2px 4px rgba(0,0,0,0.3)'
+            # Use session_state to track click since HTML <a> can't call Python
+            btn_key = f"send_{key_suffix}"
             if st.button(
                 "\U0001f680 Send to Linear",
-                key=f"send_{key_suffix}",
+                key=btn_key,
                 type="primary",
             ):
                 _send_to_linear(item)

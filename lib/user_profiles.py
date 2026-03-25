@@ -11,8 +11,8 @@ from __future__ import annotations
 # All pages (engineering sees all, GPs see a subset)
 # ---------------------------------------------------------------------------
 
-_ALL_PAGES = ["Home", "For You", "For You v2", "Ingestion", "Cost Tracking", "Clusters", "Ask AI"]
-_GP_PAGES = ["Home", "For You", "For You v2", "Clusters", "Ask AI"]
+_ALL_PAGES = ["Home", "For You", "For You v2", "Ingestion", "Cost Tracking", "Clusters", "Ask AI", "My Profile"]
+_GP_PAGES = ["Home", "For You", "For You v2", "Clusters", "Ask AI", "My Profile"]
 
 # ---------------------------------------------------------------------------
 # Base profiles derived from scripts/reviewer_profiles.json

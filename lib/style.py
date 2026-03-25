@@ -254,6 +254,7 @@ _ALL_PAGES = {
     "Cost Tracking": ("pages/2_Cost_Tracking.py", "💰"),
     "Clusters": ("pages/3_Clusters.py", "🔬"),
     "Ask AI": ("pages/4_Ask_Data.py", "✨"),
+    "My Profile": ("pages/7_My_Profile.py", "👤"),
 }
 
 
@@ -289,6 +290,26 @@ def _resolve_profile(force_refresh=False):
             profile = dict(profiles[persona_key])
             profile["_simulated"] = True
             profile["_real_email"] = email
+            profile["_persona_key"] = persona_key
+            # Merge user_preferences for the simulated persona's email
+            persona_email = f"{persona_key}@lunarventures.eu"
+            try:
+                from lib import supabase_client as sb
+                prefs = sb.query_fresh("user_preferences", {
+                    "email": f"eq.{persona_email}",
+                    "limit": "1",
+                })
+                if prefs:
+                    pref = prefs[0]
+                    extra = pref.get("extra_domains") or []
+                    if extra:
+                        profile["domains"] = list(profile["domains"]) + [
+                            d for d in extra if d not in profile["domains"]
+                        ]
+                    profile["notes"] = pref.get("notes", "")
+                    profile["hidden_sources"] = pref.get("hidden_sources") or []
+            except Exception:
+                pass
             st.session_state["user_profile"] = profile
             return profile
 
@@ -378,18 +399,6 @@ def apply():
                 st.caption(f"Signed in as {display_name} · {role}")
             else:
                 st.caption(f"Signed in as {display_name}")
-
-            # Profile viewer (expandable)
-            domains = profile.get("domains", [])
-            domain_text = "All domains" if domains == ["all"] else ", ".join(domains[:10]) or "None"
-            notes = profile.get("notes", "")
-
-            with st.expander("My Profile", expanded=False):
-                st.markdown(f"**Role:** {role}")
-                st.markdown(f"**Domains:** {domain_text}")
-                if notes:
-                    st.markdown(f"**Notes:** {notes}")
-                st.caption("Edit preferences via Ask AI: \"Add X to my interests\"")
 
             # --- Persona simulator (Engineering only) ---
             real_email = profile.get("_real_email", "")

@@ -364,35 +364,10 @@ def _render_item_row(item, key_suffix):
 # Page header
 # ---------------------------------------------------------------------------
 
-def _upsert_preferences(email, extra_domains, notes=""):
-    """Upsert user preferences into Supabase."""
-    url_base, _ = sb._get_credentials()
-    endpoint = f"{url_base}/rest/v1/user_preferences"
-    hdrs = sb._headers()
-    hdrs["Prefer"] = "resolution=merge-duplicates,return=minimal"
-    body = json.dumps({
-        "email": email,
-        "extra_domains": extra_domains,
-        "notes": notes,
-    }).encode()
-    req = urllib.request.Request(endpoint, data=body, headers=hdrs, method="POST")
-    urllib.request.urlopen(req, timeout=10)
-
-
-def _get_user_email():
-    """Get the real logged-in user's email."""
-    try:
-        if st.user.is_logged_in:
-            return st.user.email.lower()
-    except AttributeError:
-        pass
-    return None
-
-
 st.title("For You")
 
 if not user_domains:
-    st.info("Add domains to your profile via Ask AI: *'Add robotics to my interests'*")
+    st.info("Add domains in [My Profile](/My_Profile) or via Ask AI: *'Add robotics to my interests'*")
     st.stop()
 
 if is_all:
@@ -401,69 +376,7 @@ else:
     pills = " ".join(
         f'`{d}`' for d in user_domains
     )
-    st.caption(f"Your domains: {pills}")
-
-# --- Manage interests ---
-with st.expander("Manage my interests", expanded=False):
-    user_email = _get_user_email()
-    if not user_email:
-        st.caption("Sign in to manage your interests.")
-    else:
-        # Show current domains with remove buttons
-        st.markdown("**Your domains:**")
-
-        # Fetch current extra_domains from Supabase
-        current_prefs = sb.query_fresh("user_preferences", {
-            "email": f"eq.{user_email}",
-            "limit": "1",
-        }) or []
-        extra_domains = current_prefs[0].get("extra_domains", []) if current_prefs else []
-        current_notes = current_prefs[0].get("notes", "") if current_prefs else ""
-
-        # Base domains from profile (non-removable)
-        from lib.user_profiles import get_profile
-        base_profile = get_profile(user_email)
-        base_domains = base_profile.get("domains", [])
-
-        # Show base domains
-        if base_domains and base_domains != ["all"]:
-            base_pills = ", ".join(f"`{d}`" for d in base_domains)
-            st.caption(f"Base: {base_pills}")
-
-        # Show extra domains with remove buttons
-        if extra_domains:
-            st.caption("Added interests:")
-            cols_per_row = 4
-            for row_start in range(0, len(extra_domains), cols_per_row):
-                row = extra_domains[row_start:row_start + cols_per_row]
-                cols = st.columns(len(row))
-                for col, domain in zip(cols, row):
-                    with col:
-                        if st.button(f"✕ {domain}", key=f"rm_{domain}", use_container_width=True):
-                            new_extra = [d for d in extra_domains if d != domain]
-                            _upsert_preferences(user_email, new_extra, current_notes)
-                            # Clear cached embedding + profile
-                            for k in list(st.session_state.keys()):
-                                if k.startswith("_domain_embedding"):
-                                    del st.session_state[k]
-                            st.session_state.pop("user_profile", None)
-                            st.rerun()
-
-        # Add new domain
-        new_domain = st.text_input("Add a new interest", placeholder="e.g. quantum computing", key="add_domain_input")
-        if st.button("Add", key="add_domain_btn", type="primary"):
-            if new_domain and new_domain.strip():
-                clean = new_domain.strip().lower()
-                if clean not in extra_domains and clean not in base_domains:
-                    new_extra = extra_domains + [clean]
-                    _upsert_preferences(user_email, new_extra, current_notes)
-                    for k in list(st.session_state.keys()):
-                        if k.startswith("_domain_embedding"):
-                            del st.session_state[k]
-                    st.session_state.pop("user_profile", None)
-                    st.rerun()
-                else:
-                    st.warning(f"'{clean}' is already in your domains.")
+    st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
 
 # Sidebar
 with st.sidebar:

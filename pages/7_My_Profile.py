@@ -196,7 +196,29 @@ elif base_domains:
 
 # Show extra domains with remove buttons
 st.markdown("")
-st.markdown("**Added interests**")
+col_title, col_clear = st.columns([3, 1])
+with col_title:
+    st.markdown("**Added interests**")
+with col_clear:
+    if extra_domains:
+        st.markdown(
+            '<style>div[data-testid="stButton"]:has(button[key="rm_all"]) button {'
+            'background:linear-gradient(135deg,#DC2626,#EF4444) !important;'
+            'border:none !important;'
+            'box-shadow:0 2px 6px rgba(220,38,38,0.4) !important;'
+            '} div[data-testid="stButton"]:has(button[key="rm_all"]) button:hover {'
+            'box-shadow:0 4px 12px rgba(220,38,38,0.6) !important;'
+            'transform:translateY(-1px) !important;'
+            '}</style>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Remove all", key="rm_all", type="primary"):
+            _upsert_preferences(target_email, [], current_notes)
+            st.session_state.pop("user_profile", None)
+            for k in list(st.session_state.keys()):
+                if k.startswith("_domain_embedding"):
+                    del st.session_state[k]
+            st.rerun()
 
 if extra_domains:
     cols_per_row = 3

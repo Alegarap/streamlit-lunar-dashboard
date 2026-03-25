@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -27,40 +28,55 @@ user_domains = profile.get("domains", [])
 is_all = user_domains == ["all"]
 
 
-def _get_openrouter_key():
-    """Resolve OpenRouter API key from Streamlit secrets or env."""
-    try:
-        key = st.secrets.get("OPENROUTER_KEY_STREAMLIT", "")
-    except FileNotFoundError:
+def _get_openrouter_keys():
+    """Resolve OpenRouter API keys (primary + fallback) from Streamlit secrets or env."""
+    keys = []
+    for key_name in ("OPENROUTER_KEY_STREAMLIT", "OPENROUTER_KEY_FALLBACK"):
         key = ""
-    if not key:
-        key = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
-    return key
+        try:
+            key = st.secrets.get(key_name, "")
+        except FileNotFoundError:
+            pass
+        if not key:
+            key = os.environ.get(key_name, "")
+        if key:
+            keys.append(key)
+    return keys
 
 
 def _generate_embedding(text):
-    """Generate embedding via OpenRouter text-embedding-3-small (1536 dims)."""
-    key = _get_openrouter_key()
-    if not key:
+    """Generate embedding via OpenRouter text-embedding-3-small (1536 dims).
+
+    Tries primary key first, falls back to OPENROUTER_KEY_FALLBACK on 402/429.
+    """
+    keys = _get_openrouter_keys()
+    if not keys:
         return None
     body = json.dumps({
         "model": "openai/text-embedding-3-small",
         "input": text,
     }).encode()
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/embeddings",
-        data=body,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read())
-        return data["data"][0]["embedding"]
-    except Exception:
-        return None
+
+    for key in keys:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/embeddings",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read())
+            return data["data"][0]["embedding"]
+        except urllib.error.HTTPError as e:
+            if e.code in (402, 429) and key != keys[-1]:
+                continue  # try fallback key
+            return None
+        except Exception:
+            return None
+    return None
 
 
 def _get_domain_embedding():

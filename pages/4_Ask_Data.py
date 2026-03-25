@@ -38,15 +38,21 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 
 OPENROUTER_KEY = ""
+OPENROUTER_KEY_FALLBACK = ""
 try:
     OPENROUTER_KEY = st.secrets.get("OPENROUTER_KEY_STREAMLIT", "")
+    OPENROUTER_KEY_FALLBACK = st.secrets.get("OPENROUTER_KEY_FALLBACK", "")
 except FileNotFoundError:
     pass
 if not OPENROUTER_KEY:
     OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
-if not OPENROUTER_KEY:
-    st.error("Missing OPENROUTER_KEY_STREAMLIT.")
+if not OPENROUTER_KEY_FALLBACK:
+    OPENROUTER_KEY_FALLBACK = os.environ.get("OPENROUTER_KEY_FALLBACK", "")
+if not OPENROUTER_KEY and not OPENROUTER_KEY_FALLBACK:
+    st.error("Missing OPENROUTER_KEY_STREAMLIT and OPENROUTER_KEY_FALLBACK.")
     st.stop()
+if not OPENROUTER_KEY:
+    OPENROUTER_KEY = OPENROUTER_KEY_FALLBACK
 
 MODEL = "anthropic/claude-sonnet-4-6"
 
@@ -435,7 +441,11 @@ def _safe_markdown(text):
 
 
 def _llm_call(messages, tools=None, max_tokens=4096):
-    """Call OpenRouter with optional tool use. Returns the full response."""
+    """Call OpenRouter with optional tool use. Returns the full response.
+
+    Automatically retries with OPENROUTER_KEY_FALLBACK if the primary key
+    gets a 402 (payment required) or 429 (rate limited).
+    """
     body = {
         "model": MODEL,
         "messages": messages,
@@ -448,16 +458,27 @@ def _llm_call(messages, tools=None, max_tokens=4096):
             for t in tools
         ]
     data = json.dumps(body).encode()
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=data,
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_KEY}",
-            "Content-Type": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read())
+
+    keys_to_try = [OPENROUTER_KEY]
+    if OPENROUTER_KEY_FALLBACK and OPENROUTER_KEY_FALLBACK != OPENROUTER_KEY:
+        keys_to_try.append(OPENROUTER_KEY_FALLBACK)
+
+    for key in keys_to_try:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code in (402, 429) and key != keys_to_try[-1]:
+                continue  # try fallback key
+            raise
 
 
 # ---------------------------------------------------------------------------

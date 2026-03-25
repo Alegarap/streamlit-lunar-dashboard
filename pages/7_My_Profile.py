@@ -58,12 +58,18 @@ def _upsert_preferences(email, extra_domains, notes=""):
 
 
 def _get_openrouter_key():
-    """Resolve OpenRouter API key."""
-    try:
-        key = st.secrets.get("OPENROUTER_KEY_STREAMLIT", "")
-    except FileNotFoundError:
+    """Resolve OpenRouter API key, with fallback."""
+    for key_name in ("OPENROUTER_KEY_STREAMLIT", "OPENROUTER_KEY_FALLBACK"):
         key = ""
-    return key or os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
+        try:
+            key = st.secrets.get(key_name, "")
+        except FileNotFoundError:
+            pass
+        if not key:
+            key = os.environ.get(key_name, "")
+        if key:
+            return key
+    return ""
 
 
 def _expand_domain_with_ai(domain):

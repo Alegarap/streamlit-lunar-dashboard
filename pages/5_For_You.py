@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import linear_client as lc
 from lib import style
-from lib.charts import COLORS, style_fig
+from lib.charts import COLORS, style_fig, item_detail_viewer
 
 style.apply()
 
@@ -234,7 +234,7 @@ else:
         # Expandable drill-down with bulk add to Linear
         with st.expander(f"View items in {label}", expanded=False):
             cluster_items = sb.query_fresh("items", {
-                "select": "id,title,source,type,source_date,source_url,source_labels,linear_identifier,description,summary",
+                "select": "id,title,source,type,source_date,source_url,source_labels,sector_labels,linear_identifier,description,summary",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
                 "limit": "200",
@@ -261,6 +261,9 @@ else:
                     use_container_width=True, hide_index=True,
                     column_config={"URL": st.column_config.LinkColumn("URL", display_text="Link")},
                 )
+
+                # Item detail viewer
+                item_detail_viewer(cluster_items, key_prefix=f"fy_{cluster['id']}")
 
                 # Bulk add to Linear — only show if there are items not yet in Linear
                 if not_in_linear:

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import linear_client as lc
 from lib import style
-from lib.charts import COLORS, metric_row, style_fig
+from lib.charts import COLORS, metric_row, style_fig, item_detail_viewer
 
 style.apply()
 
@@ -214,7 +214,7 @@ if clusters:
 
             # Fetch items for this cluster (with full data for Linear creation)
             items = sb.query_fresh("items", {
-                "select": "id,title,source,type,source_date,linear_identifier,source_url,source_labels,description,summary",
+                "select": "id,title,source,type,source_date,linear_identifier,source_url,source_labels,sector_labels,description,summary",
                 "cluster_id": f"eq.{cluster['id']}",
                 "order": "source_date.desc.nullslast",
                 "limit": "200",
@@ -236,6 +236,9 @@ if clusters:
                     use_container_width=True, hide_index=True,
                     column_config={"URL": st.column_config.LinkColumn("URL", display_text="Link")},
                 )
+
+                # Item detail viewer
+                item_detail_viewer(items, key_prefix=f"cl_{cluster['id']}")
 
                 # Bulk add to Linear
                 not_in_linear = [i for i in items if not i.get("linear_identifier")]

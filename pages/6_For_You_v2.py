@@ -514,15 +514,15 @@ st.markdown(
     '  padding: 12px 24px; font-weight: 600;'
     '  border-bottom: 3px solid transparent; transition: all 0.15s ease;'
     '}'
-    '[data-testid="stTabs"] [data-baseweb="tab"] p {'
-    '  font-size: 1.5rem !important; font-weight: 700 !important;'
-    '}'
     '[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {'
     '  border-bottom: 3px solid #A855F7 !important;'
     '  color: #A855F7 !important;'
     '}'
     '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
     '  color: #C084FC;'
+    '}'
+    '[data-testid="stTabs"]:not([data-testid="stTabs"] [data-testid="stTabs"]) > [data-baseweb="tab-list"] > [data-baseweb="tab"] p {'
+    '  font-size: 1.5rem !important; font-weight: 700 !important;'
     '}'
     '</style>',
     unsafe_allow_html=True,

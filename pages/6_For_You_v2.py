@@ -267,7 +267,7 @@ def _render_item_row(item, key_suffix):
     title = item.get("title", "Untitled")
     source = item.get("source", "")
     item_type = item.get("type", "")
-    date = _date_label(item.get("source_date") or item.get("created_at"))
+    date = _date_label(item.get("created_at") or item.get("source_date"))
     linear_id = item.get("linear_identifier")
     source_url = item.get("source_url", "")
 
@@ -575,7 +575,7 @@ else:
             cluster_items = sb.query_fresh("items", {
                 "select": "id,title,source,type,source_date,source_url,source_labels,sector_labels,linear_identifier,description,summary",
                 "cluster_id": f"eq.{cluster['id']}",
-                "order": "source_date.desc.nullslast",
+                "order": "created_at.desc",
                 "limit": "100",
             }) or []
 

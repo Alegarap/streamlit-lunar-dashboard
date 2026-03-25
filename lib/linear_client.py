@@ -90,6 +90,15 @@ def _graphql(query: str, variables: dict | None = None) -> dict:
         return {"error": str(e)}
 
 
+def graphql(query: str, variables: dict | None = None) -> dict:
+    """Execute an arbitrary GraphQL query/mutation against the Linear API.
+
+    Public wrapper around _graphql for use by the AI agent.
+    Returns the data dict or {error: ...}.
+    """
+    return _graphql(query, variables)
+
+
 def _resolve_label_ids(label_names: list[str], team: str) -> list[str]:
     """Resolve label names to IDs. Always includes 'Lunar Dashboard' for the team."""
     ids = []

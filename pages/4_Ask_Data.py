@@ -240,6 +240,31 @@ TOOLS = [
         },
     },
     {
+        "name": "linear_graphql",
+        "description": (
+            "Execute an arbitrary GraphQL query or mutation against the Linear API. "
+            "Use this for any Linear operation not covered by the specific tools — "
+            "bulk queries, listing projects, filtering by state/label/date, "
+            "listing team members, fetching cycles, roadmaps, comments, attachments, etc. "
+            "You have FULL access to the Linear GraphQL API. Construct valid queries "
+            "using the schema reference in the system prompt."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "GraphQL query or mutation string",
+                },
+                "variables": {
+                    "type": "object",
+                    "description": "Optional variables for the query",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
         "name": "show_table",
         "description": "Display data as an interactive table in the dashboard. Use when presenting lists or detailed breakdowns.",
         "input_schema": {
@@ -348,12 +373,45 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 - Florent — General Partner (AI infrastructure, inference, GPU orchestration)
 - Etel Friedmann — General Partner (developer tooling, DevOps, LLM routing)
 
+## Linear GraphQL API Reference
+You have full access to the Linear GraphQL API via the `linear_graphql` tool. Use it for any operation not covered by the specific tools. Key types and queries:
+
+### Queries
+- `issues(first: Int, filter: IssueFilter, orderBy: PaginationOrderBy)` — list/filter issues
+- `issue(id: String!)` — get by UUID
+- `searchIssues(term: String!, first: Int, filter: IssueFilter)` — text search
+- `teams` — list all teams
+- `users` — list all users
+- `labels(filter: IssueLabelFilter)` — list labels
+- `projects(first: Int, filter: ProjectFilter)` — list projects
+- `cycles(first: Int, filter: CycleFilter)` — list cycles
+
+### IssueFilter fields
+`team: {{ id: {{ eq: "UUID" }} }}`, `state: {{ name: {{ eq: "Done" }} }}`, `assignee: {{ id: {{ eq: "UUID" }} }}`, `labels: {{ name: {{ eq: "label" }} }}`, `createdAt: {{ gte: "2026-01-01" }}`, `updatedAt`, `priority`, `estimate`, etc. Combine with `and: [...]`, `or: [...]`.
+
+### Issue fields
+`id`, `identifier`, `title`, `description`, `url`, `priority`, `estimate`, `createdAt`, `updatedAt`, `completedAt`, `state {{ name type }}`, `assignee {{ id name email }}`, `team {{ key name }}`, `labels {{ nodes {{ name }} }}`, `comments {{ nodes {{ body user {{ name }} createdAt }} }}`, `relations {{ nodes {{ relatedIssue {{ identifier title }} }} }}`, `project {{ name }}`, `cycle {{ name number }}`
+
+### Mutations
+- `issueCreate(input: IssueCreateInput!)` — create issue
+- `issueUpdate(id: String!, input: IssueUpdateInput!)` — update issue
+- `issueRelationCreate(input: {{ issueId: "UUID", relatedIssueId: "UUID", type: related }})` — relate issues
+- `commentCreate(input: {{ issueId: "UUID", body: "text" }})` — add comment
+- `issueArchive(id: String!)` — archive issue
+- `issueLabelCreate(input: {{ name: "label", teamId: "UUID" }})` — create label
+
+### Team IDs
+THE (Theme & Thesis): `e7f22ea8-18ae-477a-9ec5-7971f501b480`, DEAL (Dealflow): `44c6002d-49f7-4891-8c14-d4e77bd40d01`, IN (Investment): `7e1e12c2-7804-44cb-8e13-578db1d96c83`, GEN (General): `c9e2f090-1a32-4a24-9c85-1b4e0e1e3c0d`
+
+### Pagination
+Use `first: N` for limit, `after: "cursor"` for pagination. Response: `{{ nodes [...], pageInfo {{ hasNextPage, endCursor }} }}`
+
 ## Behavioral Rules
 1. **Personalize**: When the user asks "what should I look at", "what's relevant for me", or similar, filter results by their domain expertise. Highlight items matching their interests.
 2. **Be concise**: Lead with the key finding or number. Write like you're talking to a colleague.
 3. **Use tools**: Query data before answering factual questions. Don't guess numbers.
 4. **Multi-step**: You can call multiple tools to answer complex questions. E.g., query Supabase for items, then search Linear for related issues.
-5. **Confirmation for writes**: Before calling create_linear_issue or update_linear_issue, always tell the user what you plan to do and ask them to confirm. Only call the tool after they say yes.
+5. **Confirmation for writes**: Before calling create_linear_issue, update_linear_issue, or any mutation via linear_graphql, always tell the user what you plan to do and ask them to confirm. Only call the tool after they say yes.
 6. **Cost formatting**: Use "USD" not "$" (Streamlit renders $ as LaTeX).
 7. **Tables and charts**: Use show_table for lists of items/issues. Use show_chart for trends over time. Don't use them for single values.
 8. **p_days reference**: today=0, yesterday=1, last 7 days=6, this week={max(0, (today - week_start).days)}, this month={max(0, (today - month_start).days)}, last 30 days=29.
@@ -363,6 +421,7 @@ Items are clustered by embedding similarity. Clusters have hotness scores (0.0-1
 13. **Arxiv (Academic Sourcing) items**: When creating Linear issues from arxiv items, ALWAYS prepend the scroll emoji to the title: "📜 Original Title". This applies to both themes (THE) and deals (DEAL).
 14. **Arxiv theme → deal bundle**: When creating a THE issue from an arxiv theme, also look up related deals in Supabase by matching `metadata->>arxiv_id`. The theme's `metadata.authors` array lists authors — the first author is the main author. Find the deal with that author's name as title and create it as a DEAL issue too (also with 📜 prefix, same title and description from Supabase). After creating both, use relate_linear_issues to link the theme and deal as related issues. Always inform the user which deal(s) you're creating alongside the theme.
 12. **Updating issues**: You can update existing Linear issues — change title, description, state, assignee, add labels, or post comments. Use the update_linear_issue tool.
+15. **Advanced Linear operations**: For anything beyond the specific tools (bulk queries, filtering by date/state/label, listing team members, projects, cycles, etc.), use the linear_graphql tool. You have full API access — construct any valid GraphQL query or mutation.
 """
 
 # ---------------------------------------------------------------------------
@@ -520,6 +579,13 @@ def _execute_tool(name, args):
             result = lc.relate_issues(
                 issue_id_1=args["issue_id_1"],
                 issue_id_2=args["issue_id_2"],
+            )
+            return json.dumps(result, default=str)
+
+        elif name == "linear_graphql":
+            result = lc.graphql(
+                query=args["query"],
+                variables=args.get("variables"),
             )
             return json.dumps(result, default=str)
 

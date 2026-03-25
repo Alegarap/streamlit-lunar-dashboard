@@ -521,8 +521,11 @@ st.markdown(
     '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
     '  color: #C084FC;'
     '}'
-    '[data-testid="stTabs"]:not([data-testid="stTabs"] [data-testid="stTabs"]) > [data-baseweb="tab-list"] > [data-baseweb="tab"] p {'
+    '[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stTabs"] > [data-baseweb="tab-list"] > [data-baseweb="tab"] p {'
     '  font-size: 1.5rem !important; font-weight: 700 !important;'
+    '}'
+    '[data-testid="stTabPanel"] [data-testid="stTabs"] [data-baseweb="tab"] p {'
+    '  font-size: 0.875rem !important; font-weight: 500 !important;'
     '}'
     '</style>',
     unsafe_allow_html=True,

@@ -73,11 +73,35 @@ def _date_label(ts_str):
     return str(ts_str)[:10]
 
 
+def _patch_item_linear(item_id, identifier, issue_id):
+    """Update a Supabase item with its Linear identifier and issue ID."""
+    try:
+        url_base, _ = sb._get_credentials()
+        hdrs = sb._headers()
+        hdrs["Prefer"] = "return=minimal"
+        body = json.dumps({
+            "linear_identifier": identifier,
+            "linear_issue_id": issue_id,
+        }).encode()
+        req = urllib.request.Request(
+            f"{url_base}/rest/v1/items?id=eq.{item_id}",
+            data=body, headers=hdrs, method="PATCH",
+        )
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        pass
+
+
 def _send_to_linear(item):
-    """Create a Linear issue from an item and update Supabase."""
+    """Create a Linear issue from an item and update Supabase.
+
+    For arxiv themes: also creates deals for associated authors (same source_url)
+    and relates them to the theme issue in Linear.
+    """
     team = "THE" if item.get("type") == "theme" else "DEAL"
     title = item.get("title", "")
-    if item.get("source") == "arxiv":
+    is_arxiv = item.get("source") == "arxiv"
+    if is_arxiv:
         title = f"\U0001f4dc {title}"
     desc = item.get("description") or item.get("summary") or ""
     labels = item.get("source_labels") or []
@@ -93,24 +117,55 @@ def _send_to_linear(item):
         st.error(f"Failed: {result['error']}")
         return
 
-    # Update Supabase
-    try:
-        url_base, _ = sb._get_credentials()
-        hdrs = sb._headers()
-        hdrs["Prefer"] = "return=minimal"
-        body = json.dumps({
-            "linear_identifier": result.get("identifier", ""),
-            "linear_issue_id": result.get("id", ""),
-        }).encode()
-        req = urllib.request.Request(
-            f"{url_base}/rest/v1/items?id=eq.{item['id']}",
-            data=body, headers=hdrs, method="PATCH",
-        )
-        urllib.request.urlopen(req, timeout=10)
-    except Exception:
-        pass
+    theme_identifier = result.get("identifier", "")
+    theme_issue_id = result.get("id", "")
 
-    st.success(f"Created {result.get('identifier', '')} in Linear")
+    # Update Supabase for the theme
+    _patch_item_linear(item["id"], theme_identifier, theme_issue_id)
+
+    st.success(f"Created {theme_identifier} in Linear")
+
+    # For arxiv themes: find related deals (authors) and create + relate them
+    if is_arxiv and item.get("type") == "theme" and item.get("source_url"):
+        related_deals = sb.query_fresh("items", {
+            "select": "id,title,description,summary,source_labels",
+            "source": "eq.arxiv",
+            "type": "eq.deal",
+            "source_url": f"eq.{item['source_url']}",
+            "linear_identifier": "is.null",
+            "limit": "10",
+        }) or []
+
+        if related_deals:
+            deal_count = 0
+            for deal in related_deals:
+                deal_title = f"\U0001f4dc {deal['title']}"
+                deal_desc = deal.get("description") or deal.get("summary") or ""
+                deal_labels = deal.get("source_labels") or []
+
+                deal_result = lc.create_issue(
+                    team="DEAL",
+                    title=deal_title,
+                    description=deal_desc,
+                    assignee_id=profile.get("linear_id"),
+                    label_names=deal_labels,
+                )
+                if "error" in deal_result:
+                    continue
+
+                deal_identifier = deal_result.get("identifier", "")
+                deal_issue_id = deal_result.get("id", "")
+
+                # Update Supabase for the deal
+                _patch_item_linear(deal["id"], deal_identifier, deal_issue_id)
+
+                # Relate theme ↔ deal in Linear
+                lc.relate_issues(theme_issue_id, deal_issue_id)
+
+                deal_count += 1
+
+            if deal_count:
+                st.success(f"Created {deal_count} related deal{'s' if deal_count != 1 else ''} (authors) and linked to {theme_identifier}")
 
 
 def _downgrade_headings(text):

@@ -499,109 +499,133 @@ if _use_semantic:
     st.caption(f"Matched semantically via embeddings ({len(matched_clusters)} clusters, similarity >= 0.40)")
 
 # ---------------------------------------------------------------------------
-# Section 1: Recent Items
+# Main content — two tabs: Recent Items / Your Clusters
 # ---------------------------------------------------------------------------
 
 st.markdown("---")
-st.subheader("Recent Items")
-st.caption(f"{len(domain_items)} items in the last 7 days matching your domains")
 
-if not domain_items:
-    st.info("No recent items match your domains.")
-else:
-    # Source filter tabs
-    sources_present = sorted(set(i.get("source", "") for i in domain_items))
-    tab_labels = ["All"] + [s.title() if s != "hackernews" else "Hacker News" for s in sources_present]
-    tabs = st.tabs(tab_labels)
+# Custom CSS for tab accent color
+st.markdown(
+    '<style>'
+    '[data-testid="stTabs"] [data-baseweb="tab-list"] {'
+    '  gap: 0; border-bottom: 2px solid rgba(168,85,247,0.15);'
+    '}'
+    '[data-testid="stTabs"] [data-baseweb="tab"] {'
+    '  padding: 12px 24px; font-size: 1rem; font-weight: 600;'
+    '  border-bottom: 3px solid transparent; transition: all 0.15s ease;'
+    '}'
+    '[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {'
+    '  border-bottom: 3px solid #A855F7 !important;'
+    '  color: #A855F7 !important;'
+    '}'
+    '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
+    '  color: #C084FC;'
+    '}'
+    '</style>',
+    unsafe_allow_html=True,
+)
 
-    for tab_idx, tab in enumerate(tabs):
-        with tab:
-            if tab_idx == 0:
-                filtered = domain_items
+tab_recent, tab_clusters = st.tabs([
+    f"📋 Recent Items ({len(domain_items)})",
+    f"🔬 Your Clusters ({len(matched_clusters)})",
+])
+
+# --- Tab 1: Recent Items ---
+with tab_recent:
+    if not domain_items:
+        st.info("No recent items match your domains.")
+    else:
+        st.caption(f"{len(domain_items)} items in the last 7 days")
+
+        # Source filter tabs
+        sources_present = sorted(set(i.get("source", "") for i in domain_items))
+        tab_labels = ["All"] + [s.title() if s != "hackernews" else "Hacker News" for s in sources_present]
+        source_tabs = st.tabs(tab_labels)
+
+        for tab_idx, tab in enumerate(source_tabs):
+            with tab:
+                if tab_idx == 0:
+                    filtered = domain_items
+                else:
+                    src_key = sources_present[tab_idx - 1]
+                    filtered = [i for i in domain_items if i.get("source") == src_key]
+
+                if not filtered:
+                    st.caption("No items from this source.")
+                    continue
+
+                for idx, item in enumerate(filtered[:50]):
+                    _render_item_row(item, key_suffix=f"recent_{tab_idx}_{idx}")
+
+                if len(filtered) > 50:
+                    st.caption(f"Showing 50 of {len(filtered)} items")
+
+# --- Tab 2: Your Clusters ---
+with tab_clusters:
+    if not matched_clusters:
+        st.info("No clusters match your domains yet.")
+    else:
+        st.caption(f"{len(matched_clusters)} clusters ranked by hotness")
+
+        for c_idx, cluster in enumerate(matched_clusters[:20]):
+            score = float(cluster.get("hotness_score") or 0)
+            label = cluster.get("label") or "Unlabeled"
+            item_count = cluster.get("item_count", 0)
+            diversity = cluster.get("source_diversity", 0)
+            summary = cluster.get("summary") or ""
+
+            # Score color
+            if score >= 0.6:
+                score_color = "#EF4444"
+                heat = "🔴"
+            elif score >= 0.4:
+                score_color = "#F59E0B"
+                heat = "🟠"
+            elif score >= 0.3:
+                score_color = "#EAB308"
+                heat = "🟡"
             else:
-                src_key = sources_present[tab_idx - 1]
-                filtered = [i for i in domain_items if i.get("source") == src_key]
+                score_color = "#94A3B8"
+                heat = "⚪"
 
-            if not filtered:
-                st.caption("No items from this source.")
-                continue
+            # Cluster header card
+            st.markdown(
+                f'<div style="display:flex; align-items:center; gap:12px; padding:14px 18px; '
+                f'margin-top:12px; border-radius:10px; '
+                f'background:linear-gradient(145deg,#2A3154,#252B45); '
+                f'border:1px solid rgba(168,85,247,0.12);">'
+                f'<span style="font-size:1.3rem;">{heat}</span>'
+                f'<div style="flex:1; min-width:0;">'
+                f'<div style="font-weight:700; font-size:1rem; margin-bottom:2px;">{label}</div>'
+                f'<div style="font-size:0.78rem; opacity:0.55;">'
+                f'{item_count} items · {diversity} source{"s" if diversity != 1 else ""} · '
+                f'score <span style="color:{score_color}; font-weight:700;">{score:.2f}</span>'
+                f'</div>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-            for idx, item in enumerate(filtered[:50]):
-                _render_item_row(item, key_suffix=f"recent_{tab_idx}_{idx}")
+            if summary:
+                st.caption(summary[:200])
 
-            if len(filtered) > 50:
-                st.caption(f"Showing 50 of {len(filtered)} items")
+            # Expand to see items
+            with st.expander(f"Browse {item_count} items", expanded=False):
+                cluster_items = sb.query_fresh("items", {
+                    "select": "id,title,source,type,source_date,source_url,source_labels,sector_labels,linear_identifier,description,summary",
+                    "cluster_id": f"eq.{cluster['id']}",
+                    "order": "created_at.desc",
+                    "limit": "100",
+                }) or []
 
-# ---------------------------------------------------------------------------
-# Section 2: Clusters
-# ---------------------------------------------------------------------------
+                # Exclude arxiv deals (only themes from arxiv)
+                cluster_items = [
+                    i for i in cluster_items
+                    if not (i.get("source") == "arxiv" and i.get("type") == "deal")
+                ]
 
-st.markdown("---")
-st.subheader("Your Clusters")
-st.caption(f"{len(matched_clusters)} clusters matching your domains, ranked by hotness")
-
-if not matched_clusters:
-    st.info("No clusters match your domains yet.")
-else:
-    for c_idx, cluster in enumerate(matched_clusters[:20]):
-        score = float(cluster.get("hotness_score") or 0)
-        label = cluster.get("label") or "Unlabeled"
-        item_count = cluster.get("item_count", 0)
-        diversity = cluster.get("source_diversity", 0)
-        summary = cluster.get("summary") or ""
-
-        # Score color
-        if score >= 0.6:
-            score_color = "#EF4444"
-            heat = "🔴"
-        elif score >= 0.4:
-            score_color = "#F59E0B"
-            heat = "🟠"
-        elif score >= 0.3:
-            score_color = "#EAB308"
-            heat = "🟡"
-        else:
-            score_color = "#94A3B8"
-            heat = "⚪"
-
-        # Cluster header card
-        st.markdown(
-            f'<div style="display:flex; align-items:center; gap:12px; padding:14px 18px; '
-            f'margin-top:12px; border-radius:10px; '
-            f'background:linear-gradient(145deg,#2A3154,#252B45); '
-            f'border:1px solid rgba(168,85,247,0.12);">'
-            f'<span style="font-size:1.3rem;">{heat}</span>'
-            f'<div style="flex:1; min-width:0;">'
-            f'<div style="font-weight:700; font-size:1rem; margin-bottom:2px;">{label}</div>'
-            f'<div style="font-size:0.78rem; opacity:0.55;">'
-            f'{item_count} items · {diversity} source{"s" if diversity != 1 else ""} · '
-            f'score <span style="color:{score_color}; font-weight:700;">{score:.2f}</span>'
-            f'</div>'
-            f'</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
-        if summary:
-            st.caption(summary[:200])
-
-        # Expand to see items
-        with st.expander(f"Browse {item_count} items", expanded=False):
-            cluster_items = sb.query_fresh("items", {
-                "select": "id,title,source,type,source_date,source_url,source_labels,sector_labels,linear_identifier,description,summary",
-                "cluster_id": f"eq.{cluster['id']}",
-                "order": "created_at.desc",
-                "limit": "100",
-            }) or []
-
-            # Exclude arxiv deals (only themes from arxiv)
-            cluster_items = [
-                i for i in cluster_items
-                if not (i.get("source") == "arxiv" and i.get("type") == "deal")
-            ]
-
-            if not cluster_items:
-                st.caption("No items found.")
-            else:
-                for i_idx, item in enumerate(cluster_items):
-                    _render_item_row(item, key_suffix=f"cl_{c_idx}_{i_idx}")
+                if not cluster_items:
+                    st.caption("No items found.")
+                else:
+                    for i_idx, item in enumerate(cluster_items):
+                        _render_item_row(item, key_suffix=f"cl_{c_idx}_{i_idx}")

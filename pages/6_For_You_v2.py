@@ -160,45 +160,57 @@ def _render_item_row(item, key_suffix):
         )
         st.markdown(badge_row, unsafe_allow_html=True)
 
-        # Action button — consistent placement below badges with padding
-        _btn_style = (
+        # Spacer between badges and button
+        st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+
+        # Action buttons — both rendered as styled HTML for consistency
+        _btn_base = (
             'display:inline-flex; align-items:center; gap:6px; '
-            'border:none; border-radius:8px; padding:7px 16px; '
+            'border:none; border-radius:8px; padding:8px 18px; '
             'font-size:0.8rem; font-weight:600; text-decoration:none; '
-            'transition:all 0.15s ease; cursor:pointer; white-space:nowrap; '
-            'margin-top:10px;'
-        )
-        _hover_js = (
-            "this.style.transform='translateY(-1px)';"
-            "this.style.boxShadow='{hover_shadow}';"
-        )
-        _unhover_js = (
-            "this.style.transform='none';"
-            "this.style.boxShadow='{base_shadow}';"
+            'cursor:pointer; white-space:nowrap; color:white; '
+            'transition:transform 0.15s ease, box-shadow 0.15s ease;'
         )
 
         if linear_id:
             linear_url = _linear_issue_url(linear_id)
-            base_shadow = '0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2)'
-            hover_shadow = '0 4px 12px rgba(99,102,241,0.6),0 2px 4px rgba(0,0,0,0.3)'
             st.markdown(
                 f'<a href="{linear_url}" target="_blank" style="'
-                f'{_btn_style}'
-                f'background:linear-gradient(135deg,#6366F1,#818CF8); color:white; '
-                f'box-shadow:{base_shadow};'
-                f'" onmouseover="{_hover_js.format(hover_shadow=hover_shadow)}"'
-                f' onmouseout="{_unhover_js.format(base_shadow=base_shadow)}"'
+                f'{_btn_base}'
+                f'background:linear-gradient(135deg,#6366F1,#818CF8); '
+                f'box-shadow:0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2);'
+                f'" onmouseover="this.style.transform=\'translateY(-1px)\';'
+                f"this.style.boxShadow='0 4px 12px rgba(99,102,241,0.6),0 2px 4px rgba(0,0,0,0.3)';\""
+                f' onmouseout="this.style.transform=\'none\';'
+                f"this.style.boxShadow='0 2px 6px rgba(99,102,241,0.4),0 1px 2px rgba(0,0,0,0.2)';\""
                 f'>\U0001f50d Open in Linear</a>',
                 unsafe_allow_html=True,
             )
         else:
-            base_shadow = '0 2px 6px rgba(168,85,247,0.4),0 1px 2px rgba(0,0,0,0.2)'
-            hover_shadow = '0 4px 12px rgba(168,85,247,0.6),0 2px 4px rgba(0,0,0,0.3)'
-            # Use session_state to track click since HTML <a> can't call Python
-            btn_key = f"send_{key_suffix}"
+            # Styled container + CSS override for the Streamlit button
+            st.markdown(
+                f'<style>'
+                f'div[data-testid="stButton"]:has(button[key="send_{key_suffix}"]) button,'
+                f'div[data-testid="stButton"] button[kind="primary"] {{'
+                f'  background:linear-gradient(135deg,#9333EA,#A855F7) !important;'
+                f'  border:none !important;'
+                f'  border-radius:8px !important;'
+                f'  padding:8px 18px !important;'
+                f'  font-size:0.8rem !important;'
+                f'  font-weight:600 !important;'
+                f'  box-shadow:0 2px 6px rgba(147,51,234,0.4),0 1px 2px rgba(0,0,0,0.2) !important;'
+                f'  transition:transform 0.15s ease, box-shadow 0.15s ease !important;'
+                f'}}'
+                f'div[data-testid="stButton"] button[kind="primary"]:hover {{'
+                f'  transform:translateY(-1px) !important;'
+                f'  box-shadow:0 4px 12px rgba(147,51,234,0.6),0 2px 4px rgba(0,0,0,0.3) !important;'
+                f'}}'
+                f'</style>',
+                unsafe_allow_html=True,
+            )
             if st.button(
                 "\U0001f680 Send to Linear",
-                key=btn_key,
+                key=f"send_{key_suffix}",
                 type="primary",
             ):
                 _send_to_linear(item)

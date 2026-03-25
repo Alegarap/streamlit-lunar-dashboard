@@ -422,7 +422,7 @@ with st.spinner("Loading your feed..."):
                 "select": "id,title,source,type,source_date,created_at,source_url,source_labels,sector_labels,linear_identifier,description,summary,cluster_id",
                 "created_at": f"gte.{iso_7d}",
                 "order": "created_at.desc",
-                "limit": "500",
+                "limit": "1000",
             }) or []
 
             # Items match if they're in a matched cluster
@@ -443,7 +443,7 @@ with st.spinner("Loading your feed..."):
             "select": "id,title,source,type,source_date,created_at,source_url,source_labels,sector_labels,linear_identifier,description,summary,cluster_id",
             "created_at": f"gte.{iso_7d}",
             "order": "created_at.desc",
-            "limit": "200",
+            "limit": "1000",
         }) or []
 
         all_clusters = sb.query_fresh("clusters", {

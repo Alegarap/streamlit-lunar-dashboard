@@ -521,23 +521,18 @@ st.markdown(
     '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
     '  color: #C084FC;'
     '}'
-    '[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stTabs"] > [data-baseweb="tab-list"] > [data-baseweb="tab"] p {'
-    '  font-size: 1.5rem !important; font-weight: 700 !important;'
-    '}'
-    '[data-testid="stTabPanel"] [data-testid="stTabs"] [data-baseweb="tab"] p {'
-    '  font-size: 0.875rem !important; font-weight: 500 !important;'
-    '}'
     '</style>',
     unsafe_allow_html=True,
 )
 
 tab_recent, tab_clusters = st.tabs([
-    f"📋 Recent Items ({len(domain_items)})",
-    f"🔬 Your Clusters ({len(matched_clusters)})",
+    "📋  Recent Items",
+    "🔬  Your Clusters",
 ])
 
 # --- Tab 1: Recent Items ---
 with tab_recent:
+    st.markdown(f"### 📋 Recent Items — {len(domain_items)}")
     if not domain_items:
         st.info("No recent items match your domains.")
     else:
@@ -568,10 +563,11 @@ with tab_recent:
 
 # --- Tab 2: Your Clusters ---
 with tab_clusters:
+    st.markdown(f"### 🔬 Your Clusters — {len(matched_clusters)}")
     if not matched_clusters:
         st.info("No clusters match your domains yet.")
     else:
-        st.caption(f"{len(matched_clusters)} clusters ranked by hotness")
+        st.caption(f"Ranked by hotness")
 
         for c_idx, cluster in enumerate(matched_clusters[:20]):
             score = float(cluster.get("hotness_score") or 0)

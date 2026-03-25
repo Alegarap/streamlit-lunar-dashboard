@@ -131,7 +131,7 @@ def _linear_issue_url(identifier):
     """Build the Linear issue URL from an identifier like THE-123."""
     if not identifier:
         return ""
-    return f"https://linear.app/lunar-ventures/issue/{identifier}"
+    return f"https://linear.app/tigerslug/issue/{identifier}"
 
 
 def _render_item_row(item, key_suffix):

@@ -249,6 +249,7 @@ def require_auth():
 _ALL_PAGES = {
     "Home": ("app.py", "🏠"),
     "For You": ("pages/5_For_You.py", "🎯"),
+    "For You v2": ("pages/6_For_You_v2.py", "🧭"),
     "Ingestion": ("pages/1_Ingestion.py", "📊"),
     "Cost Tracking": ("pages/2_Cost_Tracking.py", "💰"),
     "Clusters": ("pages/3_Clusters.py", "🔬"),

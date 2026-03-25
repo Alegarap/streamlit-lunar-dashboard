@@ -1,6 +1,7 @@
 """For You v2 — clean, readable feed of recent items and domain clusters."""
 
 import json
+import os
 import sys
 import urllib.request
 from collections import defaultdict
@@ -24,6 +25,65 @@ style.apply()
 profile = st.session_state.get("user_profile", {})
 user_domains = profile.get("domains", [])
 is_all = user_domains == ["all"]
+
+
+def _get_openrouter_key():
+    """Resolve OpenRouter API key from Streamlit secrets or env."""
+    try:
+        key = st.secrets.get("OPENROUTER_KEY_STREAMLIT", "")
+    except FileNotFoundError:
+        key = ""
+    if not key:
+        key = os.environ.get("OPENROUTER_KEY_STREAMLIT", "")
+    return key
+
+
+def _generate_embedding(text):
+    """Generate embedding via OpenRouter text-embedding-3-small (1536 dims)."""
+    key = _get_openrouter_key()
+    if not key:
+        return None
+    body = json.dumps({
+        "model": "openai/text-embedding-3-small",
+        "input": text,
+    }).encode()
+    req = urllib.request.Request(
+        "https://openrouter.ai/api/v1/embeddings",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+        return data["data"][0]["embedding"]
+    except Exception:
+        return None
+
+
+def _get_domain_embedding():
+    """Get or generate the domain embedding for the current user profile.
+
+    Cached in session_state so it's only generated once per session.
+    """
+    cache_key = "_domain_embedding"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+
+    if is_all or not user_domains:
+        return None
+
+    # Build a rich text from domains + profile description for embedding
+    domain_text = ", ".join(user_domains)
+    description = profile.get("description", "")
+    embed_input = f"Investment domains: {domain_text}. {description}"
+
+    embedding = _generate_embedding(embed_input)
+    if embedding:
+        st.session_state[cache_key] = embedding
+    return embedding
 
 # Bright, readable source colors for dark backgrounds
 SOURCE_COLORS = {
@@ -297,14 +357,6 @@ def _render_item_row(item, key_suffix):
             st.markdown(f"[Open source ↗]({source_url})")
 
 
-def _cluster_matches(c):
-    if is_all:
-        return True
-    text = ((c.get("label") or "") + " " + (c.get("summary") or "")).lower()
-    domain_lower = [d.lower() for d in user_domains]
-    return any(d in text for d in domain_lower)
-
-
 # ---------------------------------------------------------------------------
 # Page header
 # ---------------------------------------------------------------------------
@@ -328,44 +380,105 @@ with st.sidebar:
     st.caption("Data refreshes every 5 minutes")
     if st.button("Refresh now", use_container_width=True):
         st.cache_data.clear()
+        # Clear cached embedding so it regenerates on next load
+        st.session_state.pop("_domain_embedding", None)
         st.rerun()
 
 # ---------------------------------------------------------------------------
-# Data loading
+# Data loading — semantic matching via embeddings
 # ---------------------------------------------------------------------------
+
+domain_embedding = _get_domain_embedding()
+_use_semantic = domain_embedding is not None and not is_all
 
 with st.spinner("Loading your feed..."):
     iso_7d = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
 
-    # Recent items (last 7 days, with descriptions for instant expand)
-    recent_items = sb.query_fresh("items", {
-        "select": "id,title,source,type,source_date,created_at,source_url,source_labels,sector_labels,linear_identifier,description,summary",
-        "created_at": f"gte.{iso_7d}",
-        "order": "created_at.desc",
-        "limit": "200",
-    }) or []
+    if _use_semantic:
+        # Semantic matching via Supabase vector RPCs
+        try:
+            # 1. Find semantically matching clusters
+            matched_clusters = sb.rpc_fresh("search_clusters_by_embedding", {
+                "query_emb": domain_embedding,
+                "lim": 50,
+            }) or []
 
-    # All clusters
-    all_clusters = sb.query_fresh("clusters", {
-        "select": "id,label,summary,item_count,source_diversity,hotness_score,first_seen_at,last_surfaced_at",
-        "order": "hotness_score.desc.nullslast",
-        "limit": "500",
-    }) or []
-    all_clusters = [c for c in all_clusters if c.get("item_count", 0) > 0]
+            # Filter by similarity threshold and non-empty
+            matched_clusters = [
+                c for c in matched_clusters
+                if float(c.get("similarity", 0)) >= 0.25
+                and c.get("item_count", 0) > 0
+            ]
 
-# Filter to user's domains
-matched_cluster_ids = {c["id"] for c in all_clusters if _cluster_matches(c)}
-matched_clusters = [c for c in all_clusters if c["id"] in matched_cluster_ids]
+            # Sort by hotness (already semantically filtered)
+            matched_clusters.sort(
+                key=lambda c: float(c.get("hotness_score") or 0), reverse=True
+            )
 
-# Filter to user's domains, exclude arxiv deals (only themes from arxiv)
-domain_items = [
-    i for i in recent_items
-    if not (i.get("source") == "arxiv" and i.get("type") == "deal")
-    and (
-        i.get("cluster_id") in matched_cluster_ids or is_all
-        or any(d in (i.get("title") or "").lower() for d in [d.lower() for d in user_domains])
-    )
-]
+            # 2. Get recent items that belong to matched clusters
+            matched_cluster_ids = {c["id"] for c in matched_clusters}
+
+            recent_items = sb.query_fresh("items", {
+                "select": "id,title,source,type,source_date,created_at,source_url,source_labels,sector_labels,linear_identifier,description,summary,cluster_id",
+                "created_at": f"gte.{iso_7d}",
+                "order": "created_at.desc",
+                "limit": "500",
+            }) or []
+
+            # Items match if they're in a matched cluster
+            domain_items = [
+                i for i in recent_items
+                if not (i.get("source") == "arxiv" and i.get("type") == "deal")
+                and i.get("cluster_id") in matched_cluster_ids
+            ]
+
+        except Exception as e:
+            # Fallback to non-semantic if RPCs fail
+            st.warning(f"Semantic matching unavailable, using keyword fallback. ({e})")
+            _use_semantic = False
+
+    if not _use_semantic:
+        # Fallback: keyword matching (for "all" domains or if semantic fails)
+        recent_items = sb.query_fresh("items", {
+            "select": "id,title,source,type,source_date,created_at,source_url,source_labels,sector_labels,linear_identifier,description,summary,cluster_id",
+            "created_at": f"gte.{iso_7d}",
+            "order": "created_at.desc",
+            "limit": "200",
+        }) or []
+
+        all_clusters = sb.query_fresh("clusters", {
+            "select": "id,label,summary,item_count,source_diversity,hotness_score,first_seen_at,last_surfaced_at",
+            "order": "hotness_score.desc.nullslast",
+            "limit": "500",
+        }) or []
+        all_clusters = [c for c in all_clusters if c.get("item_count", 0) > 0]
+
+        if is_all:
+            matched_clusters = all_clusters
+            domain_items = [
+                i for i in recent_items
+                if not (i.get("source") == "arxiv" and i.get("type") == "deal")
+            ]
+        else:
+            domain_lower = [d.lower() for d in user_domains]
+
+            def _cluster_matches(c):
+                text = ((c.get("label") or "") + " " + (c.get("summary") or "")).lower()
+                return any(d in text for d in domain_lower)
+
+            matched_clusters = [c for c in all_clusters if _cluster_matches(c)]
+            matched_cluster_ids = {c["id"] for c in matched_clusters}
+            domain_items = [
+                i for i in recent_items
+                if not (i.get("source") == "arxiv" and i.get("type") == "deal")
+                and (
+                    i.get("cluster_id") in matched_cluster_ids
+                    or any(d in (i.get("title") or "").lower() for d in domain_lower)
+                )
+            ]
+
+if _use_semantic:
+    st.caption(f"Matched semantically via embeddings ({len(matched_clusters)} clusters, similarity >= 0.25)")
 
 # ---------------------------------------------------------------------------
 # Section 1: Recent Items

@@ -66,14 +66,17 @@ def _generate_embedding(text):
 def _get_domain_embedding():
     """Get or generate the domain embedding for the current user profile.
 
-    Cached in session_state so it's only generated once per session.
+    Cached in session_state per user (keyed by profile name) so switching
+    personas regenerates the embedding.
     """
-    cache_key = "_domain_embedding"
-    if cache_key in st.session_state:
-        return st.session_state[cache_key]
-
     if is_all or not user_domains:
         return None
+
+    profile_name = profile.get("name", "unknown")
+    cache_key = f"_domain_embedding_{profile_name}"
+
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
 
     # Build a rich text from domains + profile description for embedding
     domain_text = ", ".join(user_domains)
@@ -400,13 +403,13 @@ with st.spinner("Loading your feed..."):
             # 1. Find semantically matching clusters
             matched_clusters = sb.rpc_fresh("search_clusters_by_embedding", {
                 "query_emb": domain_embedding,
-                "lim": 50,
+                "lim": 300,
             }) or []
 
             # Filter by similarity threshold and non-empty
             matched_clusters = [
                 c for c in matched_clusters
-                if float(c.get("similarity", 0)) >= 0.25
+                if float(c.get("similarity", 0)) >= 0.40
                 and c.get("item_count", 0) > 0
             ]
 
@@ -478,7 +481,7 @@ with st.spinner("Loading your feed..."):
             ]
 
 if _use_semantic:
-    st.caption(f"Matched semantically via embeddings ({len(matched_clusters)} clusters, similarity >= 0.25)")
+    st.caption(f"Matched semantically via embeddings ({len(matched_clusters)} clusters, similarity >= 0.40)")
 
 # ---------------------------------------------------------------------------
 # Section 1: Recent Items

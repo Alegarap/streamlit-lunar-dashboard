@@ -80,7 +80,7 @@ _PROFILES = {
     "alberto": {
         "name": "Alberto Cresto",
         "linear_id": "33249564-9934-485a-8f5a-3cae6d3a597e",
-        "role": "General Partner",
+        "role": "Engineering",
         "domains": [
             "new materials", "nanomaterials", "advanced manufacturing",
             "battery", "energy storage", "solid-state electrolyte", "cathode", "anode",
@@ -97,7 +97,7 @@ _PROFILES = {
             "aerogel", "catalysis", "computational chemistry",
         ],
         "description": "40+ deep tech investments. Covers materials science, energy storage, semiconductors, combustion ML, construction materials, metamaterials, membranes, and bio-inspired materials.",
-        "visible_pages": _GP_PAGES,
+        "visible_pages": _ALL_PAGES,
     },
     "florent": {
         "name": "Florent",

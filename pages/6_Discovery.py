@@ -530,7 +530,7 @@ if _use_semantic:
 
 st.markdown("---")
 
-# Tabs with purple accent
+# Tabs with purple accent + bigger outer tab labels
 st.markdown(
     '<style>'
     '[data-testid="stTabs"] [data-baseweb="tab-list"] {'
@@ -547,6 +547,14 @@ st.markdown(
     '[data-testid="stTabs"] [data-baseweb="tab"]:hover {'
     '  color: #C084FC;'
     '}'
+    '/* Make all tab labels bigger */'
+    '[data-testid="stTabs"] [data-baseweb="tab"] p {'
+    '  font-size: 1.3rem !important; font-weight: 700 !important;'
+    '}'
+    '/* Reset nested tabs (source filters) back to normal */'
+    '[data-testid="stTabPanel"] [data-testid="stTabs"] [data-baseweb="tab"] p {'
+    '  font-size: 0.875rem !important; font-weight: 400 !important;'
+    '}'
     '</style>',
     unsafe_allow_html=True,
 )
@@ -558,7 +566,6 @@ tab_recent, tab_clusters = st.tabs([
 
 # --- Tab 1: Recent Items ---
 with tab_recent:
-    st.header(f"Recent Items ({len(domain_items)})")
     if not domain_items:
         st.info("No recent items match your domains.")
     else:
@@ -589,7 +596,6 @@ with tab_recent:
 
 # --- Tab 2: Your Clusters ---
 with tab_clusters:
-    st.header(f"Your Clusters ({len(matched_clusters)})")
     if not matched_clusters:
         st.info("No clusters match your domains yet.")
     else:

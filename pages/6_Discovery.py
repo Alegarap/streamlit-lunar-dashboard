@@ -386,13 +386,18 @@ if not user_domains:
     st.info("Add domains in [My Profile](/My_Profile) or via Ask AI: *'Add robotics to my interests'*")
     st.stop()
 
-if is_all:
-    st.caption("Showing all domains (Engineering view)")
-else:
-    pills = " ".join(
-        f'`{d}`' for d in user_domains
-    )
-    st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
+col_domain_info, col_toggle = st.columns([4, 1])
+with col_domain_info:
+    if is_all:
+        st.caption("Showing all domains (Engineering view)")
+    else:
+        pills = " ".join(
+            f'`{d}`' for d in user_domains
+        )
+        st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
+with col_toggle:
+    show_all_items = st.toggle("Show all", value=is_all, key="show_all_toggle",
+                               help="Show all ingested themes, not just your domains")
 
 # Sidebar
 with st.sidebar:
@@ -411,7 +416,7 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 
 domain_embedding = _get_domain_embedding()
-_use_semantic = domain_embedding is not None and not is_all
+_use_semantic = domain_embedding is not None and not is_all and not show_all_items
 
 with st.spinner("Loading your feed..."):
     iso_7d = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
@@ -487,7 +492,7 @@ with st.spinner("Loading your feed..."):
         }) or []
         all_clusters = [c for c in all_clusters if c.get("item_count", 0) > 0]
 
-        if is_all:
+        if is_all or show_all_items:
             matched_clusters = all_clusters
             domain_items = [
                 i for i in recent_items

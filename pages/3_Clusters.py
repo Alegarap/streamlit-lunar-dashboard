@@ -153,8 +153,8 @@ with st.sidebar:
 # --- Domain filter toggle ---
 show_all = True
 if has_domains:
-    filter_col1, filter_col2 = st.columns([4, 1])
-    with filter_col2:
+    filter_col1, filter_col2 = st.columns([1, 4])
+    with filter_col1:
         show_all = not st.toggle(
             "My domains only",
             value=True,

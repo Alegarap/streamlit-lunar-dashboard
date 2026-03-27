@@ -47,7 +47,7 @@ st.title("Lunar Ventures — BI Dashboard")
 period = st.radio(
     "Period",
     ["Today", "This Week", "This Month"],
-    index=1,
+    index=0,
     horizontal=True,
     label_visibility="collapsed",
 )

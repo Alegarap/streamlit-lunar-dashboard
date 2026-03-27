@@ -396,8 +396,16 @@ with col_domain_info:
         )
         st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
 with col_toggle:
-    show_all_items = st.toggle("Show all", value=is_all, key="show_all_toggle",
-                               help="Show all ingested themes, not just your domains")
+    if not is_all:
+        _my_domains = st.toggle(
+            "My domains only",
+            value=True,
+            key="discovery_domain_filter",
+            help="Filter recent items and clusters to match your domain interests via semantic similarity",
+        )
+        show_all_items = not _my_domains
+    else:
+        show_all_items = True
 
 # Sidebar
 with st.sidebar:

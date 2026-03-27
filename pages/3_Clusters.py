@@ -90,12 +90,13 @@ with st.sidebar:
 # --- Domain filter toggle ---
 show_all = True
 if has_domains:
-    filter_col1, filter_col2 = st.columns([3, 1])
-    with filter_col1:
+    filter_col1, filter_col2 = st.columns([4, 1])
+    with filter_col2:
         show_all = not st.toggle(
-            "Relevant to me",
+            "My domains only",
             value=True,
-            help=f"Filter clusters to your domains: {', '.join(user_domains[:5])}{'...' if len(user_domains) > 5 else ''}",
+            key="clusters_domain_filter",
+            help="Filter clusters to match your domain interests by keyword",
         )
 
 # --- Overview metrics ---

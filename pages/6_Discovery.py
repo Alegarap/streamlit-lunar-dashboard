@@ -558,10 +558,11 @@ tab_recent, tab_clusters = st.tabs([
 
 # --- Tab 1: Recent Items ---
 with tab_recent:
+    st.header(f"Recent Items ({len(domain_items)})")
     if not domain_items:
         st.info("No recent items match your domains.")
     else:
-        st.caption(f"{len(domain_items)} items in the last 7 days")
+        st.caption(f"Last 7 days")
 
         # Source filter tabs
         sources_present = sorted(set(i.get("source", "") for i in domain_items))
@@ -588,6 +589,7 @@ with tab_recent:
 
 # --- Tab 2: Your Clusters ---
 with tab_clusters:
+    st.header(f"Your Clusters ({len(matched_clusters)})")
     if not matched_clusters:
         st.info("No clusters match your domains yet.")
     else:

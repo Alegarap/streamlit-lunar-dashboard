@@ -46,8 +46,15 @@ def style_fig(fig):
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=60, r=40),
-        legend=dict(font=dict(size=12)),
+        margin=dict(l=60, r=20),
+        legend=dict(
+            font=dict(size=11),
+            orientation="h",
+            yanchor="bottom",
+            y=-0.25,
+            xanchor="left",
+            x=0,
+        ),
     )
     fig.update_xaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)
     fig.update_yaxes(gridcolor="rgba(226,232,240,0.15)", gridwidth=1)

@@ -249,8 +249,8 @@ def require_auth():
 # Page registry: label → (file_path, icon)
 _ALL_PAGES = {
     "Home": ("app.py", "🏠"),
-    "For You": ("pages/5_For_You.py", "🎯"),
-    "For You v2": ("pages/6_For_You_v2.py", "🧭"),
+    "For You (legacy)": ("pages/5_For_You_legacy.py", "🎯"),
+    "Discovery": ("pages/6_Discovery.py", "🧭"),
     "Ingestion": ("pages/1_Ingestion.py", "📊"),
     "Cost Tracking": ("pages/2_Cost_Tracking.py", "💰"),
     "Clusters": ("pages/3_Clusters.py", "🔬"),

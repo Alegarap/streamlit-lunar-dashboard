@@ -1,4 +1,4 @@
-"""For You v2 — clean, readable feed of recent items and domain clusters."""
+"""Discovery — clean, readable feed of recent items and domain clusters."""
 
 import json
 import os
@@ -380,7 +380,7 @@ def _render_item_row(item, key_suffix):
 # Page header
 # ---------------------------------------------------------------------------
 
-st.title("For You")
+st.title("Discovery")
 
 if not user_domains:
     st.info("Add domains in [My Profile](/My_Profile) or via Ask AI: *'Add robotics to my interests'*")

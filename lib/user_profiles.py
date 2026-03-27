@@ -11,8 +11,8 @@ from __future__ import annotations
 # All pages (engineering sees all, GPs see a subset)
 # ---------------------------------------------------------------------------
 
-_ALL_PAGES = ["Home", "For You", "For You v2", "Ingestion", "Cost Tracking", "Clusters", "Ask AI", "My Profile"]
-_GP_PAGES = ["Home", "For You", "For You v2", "Clusters", "Ask AI", "My Profile"]
+_ALL_PAGES = ["Home", "For You (legacy)", "Discovery", "Ingestion", "Cost Tracking", "Clusters", "Ask AI", "My Profile"]
+_GP_PAGES = ["Home", "Discovery", "Clusters", "Ask AI", "My Profile"]
 
 # ---------------------------------------------------------------------------
 # Base profiles derived from scripts/reviewer_profiles.json
@@ -38,7 +38,7 @@ _PROFILES = {
             "AI infrastructure", "AI security",
         ],
         "description": "Software engineer & founder, 15+ years in ML/AI. Covers software/data, edge AI, compute hardware, networking, cooling, new compute primitives.",
-        "visible_pages": _ALL_PAGES,  # GP + Engineering access
+        "visible_pages": _GP_PAGES,
     },
     "cindy": {
         "name": "Cindy Wei",
@@ -80,7 +80,7 @@ _PROFILES = {
     "alberto": {
         "name": "Alberto Cresto",
         "linear_id": "33249564-9934-485a-8f5a-3cae6d3a597e",
-        "role": "Engineering",
+        "role": "General Partner",
         "domains": [
             "new materials", "nanomaterials", "advanced manufacturing",
             "battery", "energy storage", "solid-state electrolyte", "cathode", "anode",
@@ -97,7 +97,7 @@ _PROFILES = {
             "aerogel", "catalysis", "computational chemistry",
         ],
         "description": "40+ deep tech investments. Covers materials science, energy storage, semiconductors, combustion ML, construction materials, metamaterials, membranes, and bio-inspired materials.",
-        "visible_pages": _ALL_PAGES,
+        "visible_pages": _GP_PAGES,
     },
     "florent": {
         "name": "Florent",

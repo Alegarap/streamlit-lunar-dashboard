@@ -495,16 +495,27 @@ def _build_data_context(df, query_info):
         df["total_cost"] = pd.to_numeric(df["total_cost"], errors="coerce").fillna(0)
         total = df["total_cost"].sum()
         lines.append(f"\nPRE-COMPUTED TOTALS (use these, do NOT re-sum):")
-        lines.append(f"- Grand total cost: USD {total:.4f}")
+        lines.append(f"- Grand total cost across all days in result: USD {total:.4f}")
         lines.append(f"- Total requests: {int(df['request_count'].sum()) if 'request_count' in df.columns else len(df)}")
+        if "day" in df.columns:
+            by_day = df.groupby("day")["total_cost"].sum().sort_index()
+            req_col = "request_count" if "request_count" in df.columns else None
+            lines.append(f"\nCost PER DAY (use these when asked about a specific day):")
+            for day, cost in by_day.items():
+                day_str = str(day)[:10]
+                if req_col:
+                    day_reqs = int(df[df["day"] == day][req_col].sum())
+                    lines.append(f"  - {day_str}: USD {cost:.4f} ({day_reqs} requests)")
+                else:
+                    lines.append(f"  - {day_str}: USD {cost:.4f}")
         if "workflow_key" in df.columns:
             by_wf = df.groupby("workflow_key")["total_cost"].sum().sort_values(ascending=False)
-            lines.append(f"\nCost by workflow:")
+            lines.append(f"\nCost by workflow (all days combined):")
             for wf, cost in by_wf.items():
                 lines.append(f"  - {wf}: USD {cost:.4f}")
         if "model" in df.columns:
             by_model = df.groupby("model")["total_cost"].sum().sort_values(ascending=False)
-            lines.append(f"\nCost by model:")
+            lines.append(f"\nCost by model (all days combined):")
             for m, cost in by_model.items():
                 lines.append(f"  - {m}: USD {cost:.4f}")
 

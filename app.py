@@ -129,7 +129,7 @@ def colored_metric(label, value, color):
 col_ing, col_cost = st.columns(2)
 
 with col_ing:
-    st.subheader("Ingestion")
+    st.header("Ingestion")
     c1, c2, c3 = st.columns(3)
     with c1:
         colored_metric("Themes", f"{themes_total:,}", "#F4A7C8")
@@ -164,7 +164,7 @@ with col_ing:
             st.plotly_chart(fig, use_container_width=True)
 
 with col_cost:
-    st.subheader("Cost")
+    st.header("Cost")
     c1, c2, c3 = st.columns(3)
     with c1:
         colored_metric("Spend", format_cost(total_cost), "#A7F3D0")
@@ -224,7 +224,7 @@ def _parse_ts(ts):
 col_clusters, col_recent = st.columns(2)
 
 with col_clusters:
-    st.subheader("Top Clusters")
+    st.header("Top Clusters")
     try:
         top_clusters = sb.query_fresh("clusters", {
             "select": "label,hotness_score,item_count,source_diversity,first_seen_at,last_surfaced_at",
@@ -298,7 +298,7 @@ with col_clusters:
         st.info("Cluster data not available.")
 
 with col_recent:
-    st.subheader("Recent Items")
+    st.header("Recent Items")
     try:
         latest = sb.query_fresh("items", {
             "select": "created_at,source,type,title,source_url",

@@ -61,7 +61,7 @@ if not cost_data:
 
 # --- Process data ---
 df = pd.DataFrame(cost_data)
-df["day"] = pd.to_datetime(df["day"])
+df["day"] = pd.to_datetime(df["day"]).dt.normalize()  # strip time, keep date only
 df["total_cost"] = pd.to_numeric(df["total_cost"], errors="coerce").fillna(0)
 if "total_input_tokens" in df.columns:
     df["total_input_tokens"] = pd.to_numeric(df["total_input_tokens"], errors="coerce").fillna(0).astype(int)
@@ -155,7 +155,7 @@ with col1:
             daily, x="day", y="total_cost",
             labels={"day": "Date", "total_cost": "Cost (USD)"},
         )
-    fig.update_layout(xaxis_tickformat="%b %d")
+    fig.update_layout(xaxis_tickformat="%b %d", xaxis_dtick=86400000)  # one tick per day
     style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -214,6 +214,6 @@ if "workflow" in df_period.columns:
             daily_wf, x="day", y="total_cost", color="workflow",
             labels={"day": "Date", "total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
-    fig.update_layout(xaxis_tickformat="%b %d")
+    fig.update_layout(xaxis_tickformat="%b %d", xaxis_dtick=86400000)
     style_fig(fig)
     st.plotly_chart(fig, use_container_width=True)

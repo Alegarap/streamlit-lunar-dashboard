@@ -379,7 +379,10 @@ def apply():
         # Conditional page links based on user profile
         for page_label, (page_file, page_icon) in _ALL_PAGES.items():
             if page_label in visible:
-                st.page_link(page_file, label=page_label, icon=page_icon)
+                try:
+                    st.page_link(page_file, label=page_label, icon=page_icon)
+                except Exception:
+                    pass  # page file not found — skip silently
 
         st.divider()
 

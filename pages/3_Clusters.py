@@ -1,7 +1,10 @@
 """Clusters & What's Hot — cluster health, top themes, and source diversity."""
 
+import json
+import os
 import sys
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pandas as pd
@@ -76,6 +79,66 @@ def _bulk_create_issues(selected_keys, options_map, profile):
         st.error(err)
 st.title("Clusters & What's Hot")
 
+# --- Embedding helpers for semantic matching ---
+
+def _get_openrouter_keys():
+    keys = []
+    for key_name in ("OPENROUTER_KEY_STREAMLIT", "OPENROUTER_KEY_FALLBACK"):
+        key = ""
+        try:
+            key = st.secrets.get(key_name, "")
+        except FileNotFoundError:
+            pass
+        if not key:
+            key = os.environ.get(key_name, "")
+        if key:
+            keys.append(key)
+    return keys
+
+
+def _get_domain_embedding():
+    """Get or generate embedding for the user's domains. Cached per user in session_state."""
+    if not has_domains:
+        return None
+    profile_name = profile.get("name", "unknown")
+    cache_key = f"_domain_embedding_{profile_name}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+
+    keys = _get_openrouter_keys()
+    if not keys:
+        return None
+
+    domain_text = ", ".join(user_domains)
+    description = profile.get("description", "")
+    embed_input = f"Investment domains: {domain_text}. {description}"
+
+    body = json.dumps({
+        "model": "openai/text-embedding-3-small",
+        "input": embed_input,
+    }).encode()
+
+    for key in keys:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/embeddings",
+            data=body,
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read())
+            embedding = data["data"][0]["embedding"]
+            st.session_state[cache_key] = embedding
+            return embedding
+        except urllib.error.HTTPError as e:
+            if e.code in (402, 429) and key != keys[-1]:
+                continue
+            return None
+        except Exception:
+            return None
+    return None
+
+
 # --- User profile for domain filtering ---
 profile = st.session_state.get("user_profile", {})
 user_domains = profile.get("domains", [])
@@ -96,7 +159,7 @@ if has_domains:
             "My domains only",
             value=True,
             key="clusters_domain_filter",
-            help="Filter clusters to match your domain interests by keyword",
+            help="Filter clusters to match your domain interests via semantic similarity",
         )
 
 # --- Overview metrics ---
@@ -110,15 +173,34 @@ with st.spinner("Loading clusters..."):
 clusters = [c for c in clusters if c.get("item_count", 0) > 0]
 all_clusters = clusters  # keep unfiltered for metrics
 
-# Filter clusters by user domains if toggle is on
+# Filter clusters by user domains if toggle is on (semantic matching)
 if has_domains and not show_all and clusters:
-    domain_lower = [d.lower() for d in user_domains]
-
-    def _cluster_matches(c):
-        text = ((c.get("label") or "") + " " + (c.get("summary") or "")).lower()
-        return any(d in text for d in domain_lower)
-
-    clusters = [c for c in clusters if _cluster_matches(c)]
+    domain_embedding = _get_domain_embedding()
+    if domain_embedding:
+        try:
+            matched = sb.rpc_fresh("search_clusters_by_embedding", {
+                "query_emb": domain_embedding,
+                "lim": 300,
+            }) or []
+            matched_ids = {
+                c["id"] for c in matched
+                if float(c.get("similarity", 0)) >= 0.40
+            }
+            clusters = [c for c in clusters if c["id"] in matched_ids]
+        except Exception:
+            # Fallback to keyword matching if semantic fails
+            domain_lower = [d.lower() for d in user_domains]
+            clusters = [
+                c for c in clusters
+                if any(d in ((c.get("label") or "") + " " + (c.get("summary") or "")).lower() for d in domain_lower)
+            ]
+    else:
+        # No embedding available — keyword fallback
+        domain_lower = [d.lower() for d in user_domains]
+        clusters = [
+            c for c in clusters
+            if any(d in ((c.get("label") or "") + " " + (c.get("summary") or "")).lower() for d in domain_lower)
+        ]
 
 total_items = sb.count_rows("items")
 clustered_items = sb.count_rows("items", {"cluster_id": "not.is.null"})

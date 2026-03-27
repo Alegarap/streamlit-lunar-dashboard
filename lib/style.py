@@ -18,6 +18,14 @@ CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;800&display=swap');
 
+/* Hide header anchor/link buttons next to titles */
+[data-testid="stHeaderActionElements"] {
+    display: none !important;
+}
+h1 a, h2 a, h3 a {
+    display: none !important;
+}
+
 /* Sidebar: hide auto-generated nav — replaced by custom page links */
 [data-testid="stSidebarNav"] {
     display: none !important;

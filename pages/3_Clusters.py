@@ -1,4 +1,4 @@
-"""Clusters & What's Hot — cluster health, top themes, and source diversity."""
+"""Clusters — cluster health, top themes, and source diversity."""
 
 import json
 import os
@@ -77,7 +77,7 @@ def _bulk_create_issues(selected_keys, options_map, profile):
         st.success(f"Created {created_count} issue{'s' if created_count != 1 else ''} in Linear!")
     for err in errors:
         st.error(err)
-st.title("Clusters & What's Hot")
+st.title("Clusters")
 
 # --- Embedding helpers for semantic matching ---
 
@@ -156,7 +156,7 @@ if has_domains:
     filter_col1, filter_col2 = st.columns([1, 4])
     with filter_col1:
         show_all = not st.toggle(
-            "My domains only",
+            "Relevant for me",
             value=True,
             key="clusters_domain_filter",
             help="Filter clusters to match your domain interests via semantic similarity",

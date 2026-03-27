@@ -386,26 +386,19 @@ if not user_domains:
     st.info("Add domains in [My Profile](/My_Profile) or via Ask AI: *'Add robotics to my interests'*")
     st.stop()
 
-col_toggle, col_domain_info = st.columns([1, 4])
-with col_toggle:
-    if not is_all:
-        _my_domains = st.toggle(
-            "My domains only",
-            value=True,
-            key="discovery_domain_filter",
-            help="Filter recent items and clusters to match your domain interests via semantic similarity",
-        )
-        show_all_items = not _my_domains
-    else:
-        show_all_items = True
-with col_domain_info:
-    if is_all:
-        st.caption("Showing all domains (Engineering view)")
-    else:
-        pills = " ".join(
-            f'`{d}`' for d in user_domains
-        )
-        st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
+if not is_all:
+    _my_domains = st.toggle(
+        "Relevant for me",
+        value=True,
+        key="discovery_domain_filter",
+        help="Filter recent items and clusters to match your domain interests via semantic similarity",
+    )
+    show_all_items = not _my_domains
+    pills = " ".join(f'`{d}`' for d in user_domains)
+    st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
+else:
+    show_all_items = True
+    st.caption("Showing all domains (Engineering view)")
 
 # Sidebar
 with st.sidebar:

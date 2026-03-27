@@ -77,21 +77,24 @@ if "workflow_key" in df.columns:
     df["workflow"] = df["workflow_key"].apply(workflow_display_name)
 
 today = datetime.now().date()
+week_start = today - timedelta(days=today.weekday())
+month_start = today.replace(day=1)
 
 
-# --- Scorecards ---
-def cost_for_period(start_date, end_date=None):
-    end_date = end_date or today
-    mask = (df["day"].dt.date >= start_date) & (df["day"].dt.date <= end_date)
+# --- Scorecards (use the day column from the RPC, which is in UTC like the Home page) ---
+def cost_for_p_days(p_days):
+    """Filter df using the same p_days logic as the RPC: day >= CURRENT_DATE - p_days."""
+    # The RPC's "day" column is already in UTC. Use the min date from the df
+    # to match the same boundary the RPC would use.
+    cutoff = today - timedelta(days=p_days)
+    mask = df["day"].dt.date >= cutoff
     subset = df[mask]
     return subset["total_cost"].sum(), subset["request_count"].sum()
 
 
-today_cost, today_reqs = cost_for_period(today)
-week_start = today - timedelta(days=today.weekday())
-week_cost, week_reqs = cost_for_period(week_start)
-month_start = today.replace(day=1)
-month_cost, month_reqs = cost_for_period(month_start)
+today_cost, today_reqs = cost_for_p_days(0)
+week_cost, week_reqs = cost_for_p_days((today - week_start).days)
+month_cost, month_reqs = cost_for_p_days((today - month_start).days)
 all_cost, all_reqs = df["total_cost"].sum(), df["request_count"].sum()
 
 metric_row([
@@ -112,15 +115,13 @@ chart_period = st.radio(
     label_visibility="collapsed",
 )
 
-if chart_period == "Today":
-    chart_start = today
-elif chart_period == "This Week":
-    chart_start = week_start
-elif chart_period == "This Month":
-    chart_start = month_start
-else:
-    chart_start = today - timedelta(days=90)
-
+_period_days = {
+    "Today": 0,
+    "This Week": (today - week_start).days,
+    "This Month": (today - month_start).days,
+    "Last 90 Days": 90,
+}
+chart_start = today - timedelta(days=_period_days[chart_period])
 df_period = df[df["day"].dt.date >= chart_start]
 
 # --- API provider breakdown ---

@@ -77,7 +77,7 @@ def _bulk_create_issues(selected_keys, options_map, profile):
         st.success(f"Created {created_count} issue{'s' if created_count != 1 else ''} in Linear!")
     for err in errors:
         st.error(err)
-st.title("Clusters")
+st.title("Clusters (legacy)")
 
 # --- Embedding helpers for semantic matching ---
 
@@ -148,6 +148,9 @@ with st.sidebar:
     st.caption("Data refreshes every 5 minutes")
     if st.button("Refresh now", use_container_width=True):
         st.cache_data.clear()
+        for k in list(st.session_state.keys()):
+            if k.startswith("_domain_embedding"):
+                del st.session_state[k]
         st.rerun()
 
 # --- Domain filter toggle ---

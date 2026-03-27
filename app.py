@@ -44,23 +44,23 @@ with st.sidebar:
 st.title("Lunar Ventures — BI Dashboard")
 
 # --- Period selector ---
-period = st.selectbox(
+period = st.radio(
     "Period",
     ["Today", "This Week", "This Month"],
-    index=0,
+    index=1,
+    horizontal=True,
     label_visibility="collapsed",
 )
 
 today = datetime.now().date()
 if period == "Today":
     p_days = 0
-    date_start = today
 elif period == "This Week":
-    date_start = today - timedelta(days=today.weekday())
-    p_days = (today - date_start).days
+    week_start = today - timedelta(days=today.weekday())
+    p_days = (today - week_start).days
 else:  # This Month
-    date_start = today.replace(day=1)
-    p_days = (today - date_start).days
+    month_start = today.replace(day=1)
+    p_days = (today - month_start).days
 
 # --- Fetch data ---
 try:

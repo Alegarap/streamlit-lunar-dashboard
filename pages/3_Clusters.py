@@ -205,19 +205,38 @@ if has_domains and not show_all and clusters:
 total_items = sb.count_rows("items")
 clustered_items = sb.count_rows("items", {"cluster_id": "not.is.null"})
 unclustered = total_items - clustered_items
-clustering_rate = (clustered_items / total_items * 100) if total_items > 0 else 0
 
 total_clusters = len(all_clusters)
 hot_clusters = sum(1 for c in all_clusters if (c.get("hotness_score") or 0) > 0.3)
-labeled_clusters = sum(1 for c in all_clusters if c.get("label"))
 filtered_count = len(clusters) if (has_domains and not show_all) else None
 
+# 24h deltas
+from datetime import datetime, timedelta
+iso_24h = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")
+new_items_24h = sb.count_rows("items", {"created_at": f"gte.{iso_24h}"})
+new_clustered_24h = sb.count_rows("items", {"cluster_id": "not.is.null", "created_at": f"gte.{iso_24h}"})
+new_unclustered_24h = new_items_24h - new_clustered_24h
+
+# New clusters in 24h (by first_seen_at)
+new_clusters_24h = sum(
+    1 for c in all_clusters
+    if (c.get("first_seen_at") or "") >= iso_24h
+)
+new_hot_24h = sum(
+    1 for c in all_clusters
+    if (c.get("hotness_score") or 0) > 0.3
+    and (c.get("last_surfaced_at") or "") >= iso_24h
+)
+
+def _delta(val):
+    return f"+{val}" if val > 0 else (str(val) if val != 0 else None)
+
 metric_row([
-    ("Items", f"{total_items:,}", None),
-    ("Clustered", f"{clustered_items:,}", f"{clustering_rate:.0f}%"),
-    ("Free", f"{unclustered:,}", None),
-    ("Clusters", total_clusters, f"{labeled_clusters} labeled"),
-    ("Hot (>0.3)", hot_clusters, None),
+    ("Items", f"{total_items:,}", _delta(new_items_24h)),
+    ("Clustered", f"{clustered_items:,}", _delta(new_clustered_24h)),
+    ("Free", f"{unclustered:,}", _delta(new_unclustered_24h)),
+    ("Clusters", total_clusters, _delta(new_clusters_24h)),
+    ("Hot (>0.3)", hot_clusters, _delta(new_hot_24h)),
 ])
 
 if filtered_count is not None:

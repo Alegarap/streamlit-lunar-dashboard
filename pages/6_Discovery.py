@@ -395,7 +395,11 @@ if not is_all:
     )
     show_all_items = not _my_domains
     pills = " ".join(f'`{d}`' for d in user_domains)
-    st.caption(f"Your domains: {pills} · [Edit](/My_Profile)")
+    col_pills, col_edit = st.columns([6, 1])
+    with col_pills:
+        st.caption(f"Your domains: {pills}")
+    with col_edit:
+        st.page_link("pages/7_My_Profile.py", label="Edit", icon="✏️")
 else:
     show_all_items = True
     st.caption("Showing all domains (Engineering view)")

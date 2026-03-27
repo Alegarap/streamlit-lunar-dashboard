@@ -119,22 +119,40 @@ if "api_type" in df.columns:
 
 st.divider()
 
+# --- Period selector for charts ---
+chart_period = st.radio(
+    "Chart period",
+    ["Today", "This Week", "This Month", "Last 90 Days"],
+    index=1,
+    horizontal=True,
+    label_visibility="collapsed",
+)
+
+if chart_period == "Today":
+    chart_start = today
+elif chart_period == "This Week":
+    chart_start = week_start
+elif chart_period == "This Month":
+    chart_start = month_start
+else:
+    chart_start = today - timedelta(days=90)
+
+df_period = df[df["day"].dt.date >= chart_start]
+
 # --- Cost trend ---
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Daily Cost Trend")
-    daily = df.groupby("day").agg({"total_cost": "sum"}).reset_index().sort_values("day")
+    daily = df_period.groupby("day").agg({"total_cost": "sum"}).reset_index().sort_values("day")
     if len(daily) > 1:
         fig = px.area(
             daily, x="day", y="total_cost",
-            title="Daily Spend",
             labels={"day": "Date", "total_cost": "Cost (USD)"},
         )
     else:
         fig = px.bar(
             daily, x="day", y="total_cost",
-            title="Daily Spend",
             labels={"day": "Date", "total_cost": "Cost (USD)"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")
@@ -143,13 +161,12 @@ with col1:
 
 with col2:
     st.subheader("Cost by Workflow")
-    if "workflow" in df.columns:
-        by_wf = df.groupby("workflow").agg({"total_cost": "sum"}).reset_index()
+    if "workflow" in df_period.columns:
+        by_wf = df_period.groupby("workflow").agg({"total_cost": "sum"}).reset_index()
         by_wf = by_wf.sort_values("total_cost", ascending=True)
         fig = px.bar(
             by_wf, x="total_cost", y="workflow",
             orientation="h",
-            title="Total Spend by Workflow",
             labels={"total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
         style_fig(fig)
@@ -158,14 +175,14 @@ with col2:
         st.info("No workflow breakdown available in current data.")
 
 # --- Cost by model ---
-if "model" in df.columns:
+if "model" in df_period.columns:
     st.subheader("Cost by Model")
     agg_cols = {"total_cost": "sum", "request_count": "sum"}
-    if "total_input_tokens" in df.columns:
+    if "total_input_tokens" in df_period.columns:
         agg_cols["total_input_tokens"] = "sum"
-    if "total_output_tokens" in df.columns:
+    if "total_output_tokens" in df_period.columns:
         agg_cols["total_output_tokens"] = "sum"
-    by_model = df.groupby("model").agg(agg_cols).reset_index().sort_values("total_cost", ascending=False)
+    by_model = df_period.groupby("model").agg(agg_cols).reset_index().sort_values("total_cost", ascending=False)
 
     rename_map = {
         "model": "Model",
@@ -184,19 +201,17 @@ if "model" in df.columns:
     )
 
 # --- Cost by workflow over time ---
-if "workflow" in df.columns:
+if "workflow" in df_period.columns:
     st.subheader("Daily Cost by Workflow")
-    daily_wf = df.groupby(["day", "workflow"]).agg({"total_cost": "sum"}).reset_index().sort_values("day")
+    daily_wf = df_period.groupby(["day", "workflow"]).agg({"total_cost": "sum"}).reset_index().sort_values("day")
     if len(daily_wf) > 1:
         fig = px.area(
             daily_wf, x="day", y="total_cost", color="workflow",
-            title="Cost Breakdown Over Time",
             labels={"day": "Date", "total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
     else:
         fig = px.bar(
             daily_wf, x="day", y="total_cost", color="workflow",
-            title="Cost Breakdown Over Time",
             labels={"day": "Date", "total_cost": "Cost (USD)", "workflow": "Workflow"},
         )
     fig.update_layout(xaxis_tickformat="%b %d")

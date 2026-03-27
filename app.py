@@ -192,135 +192,147 @@ with col_cost:
         st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------------------------------
-# TOP 5 CLUSTERS
+# TWO-COLUMN LAYOUT: Top Clusters | Recent Items
 # ---------------------------------------------------------------------------
 st.divider()
-st.subheader("Top Clusters")
 
-try:
-    top_clusters = sb.query_fresh("clusters", {
-        "select": "label,hotness_score,item_count,source_diversity,first_seen_at,last_surfaced_at",
-        "order": "hotness_score.desc.nullslast",
-        "limit": "5",
-    })
+# Source colors consistent with Discovery page
+_SOURCE_COLORS = {
+    "linear": "#818CF8",
+    "hackernews": "#FB923C",
+    "arxiv": "#FACC15",
+    "conference": "#F472B6",
+    "tigerclaw": "#A78BFA",
+    "other": "#94A3B8",
+}
+_TYPE_COLORS = {
+    "theme": "#A855F7",
+    "deal": "#F59E0B",
+}
 
-    if top_clusters:
-        for rank, cluster in enumerate(top_clusters, 1):
-            score = float(cluster.get("hotness_score") or 0)
-            label = cluster.get("label") or "Unlabeled"
-            items = cluster.get("item_count", 0)
-            diversity = cluster.get("source_diversity", 0)
+import re as _re
 
-            # Time calculations
-            first_seen = cluster.get("first_seen_at", "")
-            last_active = cluster.get("last_surfaced_at", "")
+def _parse_ts(ts):
+    if not ts:
+        return None
+    try:
+        clean = _re.sub(r'[+-]\d{2}:\d{2}$|Z$', '', ts)
+        return datetime.fromisoformat(clean)
+    except Exception:
+        return None
 
-            def parse_ts(ts):
-                """Parse ISO timestamp, stripping timezone."""
-                if not ts:
-                    return None
-                try:
-                    # Strip timezone: remove +HH:MM or Z at the end
-                    import re
-                    clean = re.sub(r'[+-]\d{2}:\d{2}$|Z$', '', ts)
-                    return datetime.fromisoformat(clean)
-                except Exception:
-                    return None
+col_clusters, col_recent = st.columns(2)
 
-            age_str = ""
-            if first_seen:
-                first_dt = parse_ts(first_seen)
-                age_days = (datetime.now() - first_dt).days if first_dt else 0
-                if age_days <= 1:
-                    age_str = "new today"
-                elif age_days < 7:
-                    age_str = f"{age_days}d old"
-                elif age_days < 30:
-                    age_str = f"{age_days // 7}w old"
-                else:
-                    age_str = f"{age_days // 30}mo old"
+with col_clusters:
+    st.subheader("Top Clusters")
+    try:
+        top_clusters = sb.query_fresh("clusters", {
+            "select": "label,hotness_score,item_count,source_diversity,first_seen_at,last_surfaced_at",
+            "order": "hotness_score.desc.nullslast",
+            "limit": "5",
+        })
 
-            momentum = ""
-            if last_active:
-                last_dt = parse_ts(last_active)
-                days_since = (datetime.now() - last_dt).days if last_dt else 999
-                if days_since == 0:
-                    momentum = "🟢 active today"
-                elif days_since <= 2:
-                    momentum = "🟢 active this week"
-                elif days_since <= 7:
-                    momentum = "🟡 last week"
-                else:
-                    momentum = "🔴 cooling off"
+        if top_clusters:
+            for rank, cluster in enumerate(top_clusters, 1):
+                score = float(cluster.get("hotness_score") or 0)
+                label = cluster.get("label") or "Unlabeled"
+                items = cluster.get("item_count", 0)
+                diversity = cluster.get("source_diversity", 0)
 
-            # Score color
-            if score >= 0.6:
-                score_color = "#EF4444"
-            elif score >= 0.4:
-                score_color = "#F59E0B"
-            else:
-                score_color = "#94A3B8"
+                age_str = ""
+                first_dt = _parse_ts(cluster.get("first_seen_at", ""))
+                if first_dt:
+                    age_days = (datetime.now() - first_dt).days
+                    if age_days <= 1:
+                        age_str = "new today"
+                    elif age_days < 7:
+                        age_str = f"{age_days}d old"
+                    elif age_days < 30:
+                        age_str = f"{age_days // 7}w old"
+                    else:
+                        age_str = f"{age_days // 30}mo old"
 
-            # Render as a styled row
-            bar_width = int(score * 100)
-            st.markdown(
-                f'<div style="display:flex; align-items:center; gap:16px; padding:12px 16px; '
-                f'margin-bottom:8px; border-radius:10px; '
-                f'background:linear-gradient(145deg,#2A3154,#252B45); '
-                f'border:1px solid rgba(168,85,247,0.1);">'
-                f'<span style="font-size:1.4rem; font-weight:800; opacity:0.3; min-width:28px;">#{rank}</span>'
-                f'<div style="flex:1; min-width:0;">'
-                f'<div style="display:flex; align-items:baseline; gap:10px; margin-bottom:4px;">'
-                f'<span style="font-weight:700; font-size:1rem;">{label}</span>'
-                f'<span style="font-size:0.75rem; color:{score_color}; font-weight:700;">{score:.2f}</span>'
-                f'</div>'
-                f'<div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; width:100%; margin-bottom:6px;">'
-                f'<div style="background:{score_color}; border-radius:4px; height:6px; width:{bar_width}%;"></div>'
-                f'</div>'
-                f'<div style="display:flex; gap:16px; font-size:0.75rem; opacity:0.6;">'
-                f'<span>{items} items</span>'
-                f'<span>{diversity} source{"s" if diversity != 1 else ""}</span>'
-                f'<span>{age_str}</span>'
-                f'<span>{momentum}</span>'
-                f'</div>'
-                f'</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-    else:
-        st.info("No cluster data available.")
-except Exception:
-    st.info("Cluster data not available.")
+                momentum = ""
+                last_dt = _parse_ts(cluster.get("last_surfaced_at", ""))
+                if last_dt:
+                    days_since = (datetime.now() - last_dt).days
+                    if days_since == 0:
+                        momentum = "🟢 active today"
+                    elif days_since <= 2:
+                        momentum = "🟢 active this week"
+                    elif days_since <= 7:
+                        momentum = "🟡 last week"
+                    else:
+                        momentum = "🔴 cooling off"
 
-# --- Recent activity ---
-st.divider()
-st.markdown("### Recent Items")
-try:
-    latest = sb.query_fresh("items", {
-        "select": "created_at,source,type,title,source_url",
-        "order": "created_at.desc",
-        "limit": "10",
-    })
-    if latest:
-        for item in latest:
-            created = item.get("created_at", "")
-            if created:
-                created = created.replace("T", " ").split(".")[0][:16]
-            source = item.get("source", "")
-            item_type = item.get("type", "")
-            url = item.get("source_url", "")
-            title = item.get("title", "Untitled")
-            title_html = (
-                f'<a href="{url}" target="_blank" style="color:inherit; text-decoration:none; '
-                f'border-bottom:1px solid rgba(255,255,255,0.2);">{title}</a>'
-                if url else title
-            )
-            st.markdown(
-                f"<small><code>{created}</code> &nbsp; "
-                f"<b>{source}</b> · {item_type} &nbsp; {title_html}</small>",
-                unsafe_allow_html=True,
-            )
-    else:
-        st.info("No recent items.")
-except Exception:
-    pass
+                score_color = "#EF4444" if score >= 0.6 else "#F59E0B" if score >= 0.4 else "#94A3B8"
+                bar_width = int(score * 100)
+
+                st.markdown(
+                    f'<div style="display:flex; align-items:center; gap:16px; padding:12px 16px; '
+                    f'margin-bottom:8px; border-radius:10px; '
+                    f'background:linear-gradient(145deg,#2A3154,#252B45); '
+                    f'border:1px solid rgba(168,85,247,0.1);">'
+                    f'<span style="font-size:1.4rem; font-weight:800; opacity:0.3; min-width:28px;">#{rank}</span>'
+                    f'<div style="flex:1; min-width:0;">'
+                    f'<div style="display:flex; align-items:baseline; gap:10px; margin-bottom:4px;">'
+                    f'<span style="font-weight:700; font-size:1rem;">{label}</span>'
+                    f'<span style="font-size:0.75rem; color:{score_color}; font-weight:700;">{score:.2f}</span>'
+                    f'</div>'
+                    f'<div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; width:100%; margin-bottom:6px;">'
+                    f'<div style="background:{score_color}; border-radius:4px; height:6px; width:{bar_width}%;"></div>'
+                    f'</div>'
+                    f'<div style="display:flex; gap:16px; font-size:0.75rem; opacity:0.6;">'
+                    f'<span>{items} items</span>'
+                    f'<span>{diversity} source{"s" if diversity != 1 else ""}</span>'
+                    f'<span>{age_str}</span>'
+                    f'<span>{momentum}</span>'
+                    f'</div>'
+                    f'</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No cluster data available.")
+    except Exception:
+        st.info("Cluster data not available.")
+
+with col_recent:
+    st.subheader("Recent Items")
+    try:
+        latest = sb.query_fresh("items", {
+            "select": "created_at,source,type,title,source_url",
+            "order": "created_at.desc",
+            "limit": "15",
+        })
+        if latest:
+            for item in latest:
+                created = item.get("created_at", "")
+                if created:
+                    created = created.replace("T", " ").split(".")[0][:16]
+                source = item.get("source", "")
+                item_type = item.get("type", "")
+                url = item.get("source_url", "")
+                title = item.get("title", "Untitled")
+
+                source_color = _SOURCE_COLORS.get(source, _SOURCE_COLORS["other"])
+                type_color = _TYPE_COLORS.get(item_type, "#94A3B8")
+
+                title_html = (
+                    f'<a href="{url}" target="_blank" style="color:inherit; text-decoration:none; '
+                    f'border-bottom:1px solid rgba(255,255,255,0.2);">{title}</a>'
+                    if url else title
+                )
+
+                st.markdown(
+                    f'<div style="padding:6px 0; border-bottom:1px solid rgba(128,128,128,0.1);">'
+                    f'<small><code>{created}</code> &nbsp; '
+                    f'<span style="color:{source_color}; font-weight:600;">{source}</span> &nbsp; '
+                    f'<span style="color:{type_color}; font-weight:600;">{item_type}</span> &nbsp; '
+                    f'{title_html}</small></div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No recent items.")
+    except Exception:
+        pass

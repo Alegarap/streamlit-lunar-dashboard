@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -74,8 +75,19 @@ def _get_openrouter_key():
 
 def _expand_domain_with_ai(domain):
     """Use AI to suggest adjacent domains related to a given interest."""
-    key = _get_openrouter_key()
-    if not key:
+    keys = []
+    for key_name in ("OPENROUTER_KEY_STREAMLIT", "OPENROUTER_KEY_FALLBACK"):
+        key = ""
+        try:
+            key = st.secrets.get(key_name, "")
+        except FileNotFoundError:
+            pass
+        if not key:
+            key = os.environ.get(key_name, "")
+        if key:
+            keys.append(key)
+
+    if not keys:
         return [domain]
 
     prompt = (
@@ -93,29 +105,37 @@ def _expand_domain_with_ai(domain):
         "temperature": 0.3,
     }).encode()
 
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=body,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        content = data["choices"][0]["message"]["content"].strip()
-        # Parse JSON array from response (handle markdown code blocks)
-        if "```" in content:
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        suggestions = json.loads(content)
-        if isinstance(suggestions, list):
-            return [s.strip().lower() for s in suggestions if isinstance(s, str)]
-    except Exception:
-        pass
-    return []
+    for api_key in keys:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+            content = data["choices"][0]["message"]["content"].strip()
+            # Parse JSON array from response (handle markdown code blocks)
+            if "```" in content:
+                parts = content.split("```")
+                if len(parts) >= 2:
+                    inner = parts[1]
+                    if inner.startswith("json"):
+                        inner = inner[4:]
+                    content = inner.strip()
+            suggestions = json.loads(content)
+            if isinstance(suggestions, list):
+                return [s.strip().lower() for s in suggestions if isinstance(s, str)]
+        except urllib.error.HTTPError as e:
+            if e.code in (402, 429) and api_key != keys[-1]:
+                continue
+            return [domain]
+        except Exception:
+            return [domain]
+    return [domain]
 
 
 # ---------------------------------------------------------------------------

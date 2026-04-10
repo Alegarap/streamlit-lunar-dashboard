@@ -98,7 +98,7 @@ TOOLS = [
             "- `get_hot_clusters(min_score, lim)` — top clusters above hotness threshold (0.0-1.0).\n\n"
             "## REST tables available:\n"
             "- `items` — themes and deals. Columns: id, type ('theme'/'deal'), title, description, summary, "
-            "source ('linear','hackernews','arxiv','conference','tigerclaw'), source_url, source_date, "
+            "source ('linear','hackernews','arxiv','conference','tigerclaw','funding','github','rss','sbir'), source_url, source_date, "
             "sector_labels (text array), cluster_id, created_at, stage, priority, linear_identifier.\n"
             "- `clusters` — item groups. Columns: id, label, summary, item_count, source_diversity, "
             "hotness_score (0.0-1.0), first_seen_at, last_surfaced_at.\n"

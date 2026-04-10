@@ -111,6 +111,10 @@ SOURCE_COLORS = {
     "arxiv": "#FACC15",        # Yellow
     "conference": "#F472B6",   # Pink
     "tigerclaw": "#A78BFA",    # Violet
+    "funding": "#34D399",      # Emerald (bright for dark bg)
+    "github": "#E5E5E5",       # Light gray (GitHub's monochrome)
+    "rss": "#FBBF24",          # Amber (bright for dark bg)
+    "sbir": "#60A5FA",         # Blue (bright for dark bg)
     "other": "#94A3B8",        # Slate
 }
 
@@ -119,6 +123,10 @@ SOURCE_ICONS = {
     "hackernews": "🟠",
     "arxiv": "📄",
     "conference": "🎤",
+    "funding": "💰",
+    "github": "🐙",
+    "rss": "📡",
+    "sbir": "🏛️",
 }
 
 TYPE_COLORS = {

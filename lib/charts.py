@@ -14,10 +14,14 @@ COLORS = {
     "arxiv": "#EC4899",        # Pink
     "conference": "#14B8A6",   # Teal
     "tigerclaw": "#8B5CF6",    # Violet
+    "funding": "#10B981",      # Emerald
+    "github": "#E5E5E5",       # Light gray (GitHub's color)
+    "rss": "#F59E0B",          # Amber
+    "sbir": "#3B82F6",         # Blue
     "other": "#94A3B8",        # Slate
 }
 
-SOURCE_ORDER = ["linear", "hackernews", "arxiv", "conference", "tigerclaw"]
+SOURCE_ORDER = ["linear", "hackernews", "arxiv", "conference", "tigerclaw", "funding", "github", "rss", "sbir"]
 
 # Human-readable names for workflow keys (from OpenRouter API key names)
 WORKFLOW_NAMES = {

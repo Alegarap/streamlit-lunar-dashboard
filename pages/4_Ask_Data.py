@@ -655,38 +655,50 @@ def _execute_tool(name, args):
             add = args.get("add_domains", [])
             remove = args.get("remove_domains", [])
             notes = args.get("notes")
+            canon = user_email.lower().strip().replace("@lunar.vc", "@lunarventures.eu")
 
-            # Fetch current prefs
-            current = sb.query_fresh("user_preferences", {
-                "email": f"eq.{user_email.lower()}",
+            # Canonical domains live in user_profiles (source of truth).
+            prof = sb.query_fresh("user_profiles", {
+                "email": f"eq.{canon}",
+                "select": "domains,name,role",
                 "limit": "1",
             })
+            sess = st.session_state.get("user_profile", {})
+            existing_domains = (prof[0].get("domains") if prof else None) or sess.get("domains", []) or []
+            pname = (prof[0].get("name") if prof else None) or sess.get("name")
+            prole = (prof[0].get("role") if prof else None) or sess.get("role")
 
-            existing_extra = []
-            existing_notes = ""
-            if current:
-                existing_extra = current[0].get("extra_domains") or []
-                existing_notes = current[0].get("notes", "")
+            if existing_domains == ["all"]:
+                return json.dumps({"error": "This profile sees all domains (Engineering) and is never filtered — nothing to change."})
 
-            # Merge domains
-            new_extra = list(set(existing_extra + add) - set(remove))
-            new_notes = notes if notes is not None else existing_notes
+            # Merge: remove first (case-insensitive), then add (deduped).
+            remove_lower = {r.lower() for r in remove}
+            merged = [d for d in existing_domains if d.lower() not in remove_lower]
+            have = {d.lower() for d in merged}
+            for a in add:
+                if a and a.lower() not in have:
+                    merged.append(a)
+                    have.add(a.lower())
 
-            # Upsert via POST with Prefer: resolution=merge-duplicates
-            _upsert_preferences(user_email.lower(), new_extra, new_notes)
+            # Notes still live in user_preferences.
+            if notes is not None:
+                _upsert_notes(canon, notes)
+                new_notes = notes
+            else:
+                cur = sb.query_fresh("user_preferences", {"email": f"eq.{canon}", "limit": "1"})
+                new_notes = cur[0].get("notes", "") if cur else ""
 
-            # Update session state
+            _upsert_profile_domains(canon, merged, pname, prole)
+
+            # Update session state + clear cached reads so the change is live.
             if "user_profile" in st.session_state:
-                base_domains = st.session_state["user_profile"].get("_base_domains",
-                    st.session_state["user_profile"].get("domains", []))
-                st.session_state["user_profile"]["domains"] = list(
-                    set(base_domains + new_extra)
-                )
+                st.session_state["user_profile"]["domains"] = merged
                 st.session_state["user_profile"]["notes"] = new_notes
+            st.cache_data.clear()
 
             return json.dumps({
                 "saved": True,
-                "extra_domains": new_extra,
+                "domains": merged,
                 "notes": new_notes,
             })
 
@@ -697,17 +709,31 @@ def _execute_tool(name, args):
         return json.dumps({"error": str(e)})
 
 
-def _upsert_preferences(email, extra_domains, notes):
-    """Upsert user preferences into Supabase."""
+def _upsert_profile_domains(email, domains, name=None, role=None):
+    """Write the canonical domain list to user_profiles (source of truth shared
+    with the ambient-sourcing plugin). name/role are sent so a new teammate row
+    can be created; for an existing row only domains change in practice."""
+    url, _ = sb._get_credentials()
+    endpoint = f"{url}/rest/v1/user_profiles?on_conflict=email"
+    hdrs = sb._headers()
+    hdrs["Prefer"] = "resolution=merge-duplicates,return=minimal"
+    row = {"email": email, "domains": domains}
+    if name:
+        row["name"] = name
+    if role:
+        row["role"] = role
+    req = urllib.request.Request(endpoint, data=json.dumps(row).encode(), headers=hdrs, method="POST")
+    with urllib.request.urlopen(req, timeout=30):
+        pass
+
+
+def _upsert_notes(email, notes):
+    """Persist free-form notes to user_preferences (domains live in user_profiles)."""
     url, _ = sb._get_credentials()
     endpoint = f"{url}/rest/v1/user_preferences"
     hdrs = sb._headers()
     hdrs["Prefer"] = "resolution=merge-duplicates,return=minimal"
-    body = json.dumps({
-        "email": email,
-        "extra_domains": extra_domains,
-        "notes": notes,
-    }).encode()
+    body = json.dumps({"email": email, "notes": notes}).encode()
     req = urllib.request.Request(endpoint, data=body, headers=hdrs, method="POST")
     with urllib.request.urlopen(req, timeout=30):
         pass

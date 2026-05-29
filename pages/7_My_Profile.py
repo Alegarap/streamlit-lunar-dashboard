@@ -12,7 +12,6 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib import supabase_client as sb
 from lib import style
-from lib.user_profiles import get_profile
 
 style.apply()
 
@@ -43,19 +42,42 @@ def _get_target_email():
     return None
 
 
-def _upsert_preferences(email, extra_domains, notes=""):
-    """Upsert user preferences into Supabase."""
+def _upsert_profile_domains(email, domains, name=None, role=None):
+    """Write the canonical domain list to user_profiles (the single source of truth
+    shared with the ambient-sourcing plugin). name/role are sent so a brand-new
+    teammate row can be created; for an existing row only domains change in practice."""
+    url_base, _ = sb._get_credentials()
+    endpoint = f"{url_base}/rest/v1/user_profiles?on_conflict=email"
+    hdrs = sb._headers()
+    hdrs["Prefer"] = "resolution=merge-duplicates,return=minimal"
+    row = {"email": email, "domains": domains}
+    if name:
+        row["name"] = name
+    if role:
+        row["role"] = role
+    body = json.dumps(row).encode()
+    req = urllib.request.Request(endpoint, data=body, headers=hdrs, method="POST")
+    urllib.request.urlopen(req, timeout=10)
+
+
+def _upsert_notes(email, notes):
+    """Persist free-form notes to user_preferences (domains live in user_profiles)."""
     url_base, _ = sb._get_credentials()
     endpoint = f"{url_base}/rest/v1/user_preferences"
     hdrs = sb._headers()
     hdrs["Prefer"] = "resolution=merge-duplicates,return=minimal"
-    body = json.dumps({
-        "email": email,
-        "extra_domains": extra_domains,
-        "notes": notes,
-    }).encode()
+    body = json.dumps({"email": email, "notes": notes}).encode()
     req = urllib.request.Request(endpoint, data=body, headers=hdrs, method="POST")
     urllib.request.urlopen(req, timeout=10)
+
+
+def _clear_profile_cache():
+    """Drop cached profile + domain embeddings so edits take effect immediately."""
+    st.session_state.pop("user_profile", None)
+    st.cache_data.clear()
+    for k in list(st.session_state.keys()):
+        if k.startswith("_domain_embedding"):
+            del st.session_state[k]
 
 
 def _get_openrouter_key():
@@ -193,171 +215,131 @@ with col_role:
 st.markdown("---")
 st.subheader("My Domains")
 
-# Load current preferences from Supabase
+# Notes still live in user_preferences; domains are now canonical in user_profiles.
 current_prefs = sb.query_fresh("user_preferences", {
     "email": f"eq.{target_email}",
     "limit": "1",
 }) or []
-extra_domains = current_prefs[0].get("extra_domains", []) if current_prefs else []
 current_notes = current_prefs[0].get("notes", "") if current_prefs else ""
 
-# Base domains from profile
-base_profile = get_profile(target_email)
-base_domains = base_profile.get("domains", [])
-is_all_base = base_domains == ["all"]
+# Canonical domains come straight from the resolved profile (user_profiles table).
+domains = list(profile.get("domains") or [])
+is_all = domains == ["all"]
+profile_name = profile.get("name")
+profile_role = profile.get("role")
 
-# Show base domains
-if is_all_base:
-    st.caption("Base domains: **All** (Engineering — sees everything)")
-elif base_domains:
-    st.markdown("**Base domains** (from role profile)")
-    pills_html = " ".join(
-        f'<span style="display:inline-block; background:rgba(168,85,247,0.12); '
-        f'border:1px solid rgba(168,85,247,0.25); border-radius:20px; '
-        f'padding:4px 14px; font-size:0.8rem; margin:3px 2px;">{d}</span>'
-        for d in base_domains
-    )
-    st.markdown(pills_html, unsafe_allow_html=True)
-    st.caption("These come from your role profile and can't be changed here.")
-
-# Show extra domains with remove buttons
-st.markdown("")
-col_title, col_clear = st.columns([3, 1])
-with col_title:
-    st.markdown("**Added interests**")
-with col_clear:
-    if extra_domains:
-        st.markdown(
-            '<style>div[data-testid="stButton"]:has(button[key="rm_all"]) button {'
-            'background:linear-gradient(135deg,#DC2626,#EF4444) !important;'
-            'border:none !important;'
-            'box-shadow:0 2px 6px rgba(220,38,38,0.4) !important;'
-            '} div[data-testid="stButton"]:has(button[key="rm_all"]) button:hover {'
-            'box-shadow:0 4px 12px rgba(220,38,38,0.6) !important;'
-            'transform:translateY(-1px) !important;'
-            '}</style>',
-            unsafe_allow_html=True,
-        )
-        if st.button("Remove all", key="rm_all", type="primary"):
-            _upsert_preferences(target_email, [], current_notes)
-            st.session_state.pop("user_profile", None)
-            for k in list(st.session_state.keys()):
-                if k.startswith("_domain_embedding"):
-                    del st.session_state[k]
-            st.rerun()
-
-if extra_domains:
-    cols_per_row = 3
-    for row_start in range(0, len(extra_domains), cols_per_row):
-        row = extra_domains[row_start:row_start + cols_per_row]
-        cols = st.columns(cols_per_row)
-        for col_idx, domain in enumerate(row):
-            with cols[col_idx]:
-                st.markdown(
-                    f'<div style="display:flex; align-items:center; justify-content:space-between; '
-                    f'background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25); '
-                    f'border-radius:8px; padding:8px 12px; margin-bottom:4px;">'
-                    f'<span style="font-size:0.85rem;">{domain}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-                if st.button("Remove", key=f"rm_{domain}", use_container_width=True):
-                    new_extra = [d for d in extra_domains if d != domain]
-                    _upsert_preferences(target_email, new_extra, current_notes)
-                    st.session_state.pop("user_profile", None)
-                    for k in list(st.session_state.keys()):
-                        if k.startswith("_domain_embedding"):
-                            del st.session_state[k]
-                    st.rerun()
+if is_all:
+    st.caption("Domains: **All** (Engineering — sees everything, never filtered).")
 else:
-    st.caption("No extra interests added yet.")
+    st.caption(
+        "These domains drive your Discovery feed and the ambient-sourcing plugin. "
+        "Edits here update the shared database and take effect everywhere."
+    )
 
-# ---------------------------------------------------------------------------
-# Add new interest
-# ---------------------------------------------------------------------------
-
-st.markdown("---")
-st.subheader("Add Interest")
-
-use_ai = st.toggle(
-    "Let AI suggest related domains",
-    value=True,
-    help="When enabled, AI will suggest 3-6 adjacent fields related to your input. "
-         "You can review and select which ones to add.",
-)
-
-new_domain = st.text_input(
-    "New interest",
-    placeholder="e.g. quantum computing, bio, defense",
-    key="add_domain_input",
-    label_visibility="collapsed",
-)
-
-if st.button("Add", type="primary", key="add_domain_btn"):
-    if new_domain and new_domain.strip():
-        clean = new_domain.strip().lower()
-        all_current = (base_domains if not is_all_base else []) + extra_domains
-
-        if use_ai:
-            with st.spinner(f"Finding domains related to '{clean}'..."):
-                suggestions = _expand_domain_with_ai(clean)
-
-            # Always include the original term
-            if clean not in suggestions:
-                suggestions = [clean] + suggestions
-
-            # Filter out already-present domains
-            new_suggestions = [s for s in suggestions if s not in all_current]
-
-            if new_suggestions:
-                st.session_state["_pending_suggestions"] = new_suggestions
-            else:
-                st.info(f"All suggested domains are already in your interests.")
-        else:
-            if clean not in all_current:
-                new_extra = extra_domains + [clean]
-                _upsert_preferences(target_email, new_extra, current_notes)
-                st.session_state.pop("user_profile", None)
-                for k in list(st.session_state.keys()):
-                    if k.startswith("_domain_embedding"):
-                        del st.session_state[k]
-                st.success(f"Added '{clean}' to your interests.")
+    col_title, col_clear = st.columns([3, 1])
+    with col_title:
+        st.markdown(f"**{len(domains)} domain{'s' if len(domains) != 1 else ''}**")
+    with col_clear:
+        if domains:
+            if st.button("Remove all", key="rm_all", type="secondary"):
+                _upsert_profile_domains(target_email, [], profile_name, profile_role)
+                _clear_profile_cache()
                 st.rerun()
+
+    if domains:
+        cols_per_row = 3
+        for row_start in range(0, len(domains), cols_per_row):
+            row = domains[row_start:row_start + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for col_idx, domain in enumerate(row):
+                with cols[col_idx]:
+                    st.markdown(
+                        f'<div style="display:flex; align-items:center; justify-content:space-between; '
+                        f'background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); '
+                        f'border-radius:8px; padding:8px 12px; margin-bottom:4px;">'
+                        f'<span style="font-size:0.85rem;">{domain}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("Remove", key=f"rm_{domain}", use_container_width=True):
+                        new_domains = [d for d in domains if d != domain]
+                        _upsert_profile_domains(target_email, new_domains, profile_name, profile_role)
+                        _clear_profile_cache()
+                        st.rerun()
+    else:
+        st.caption("No domains yet — add some below.")
+
+# ---------------------------------------------------------------------------
+# Add a domain
+# ---------------------------------------------------------------------------
+
+if not is_all:
+    st.markdown("---")
+    st.subheader("Add Domain")
+
+    use_ai = st.toggle(
+        "Let AI suggest related domains",
+        value=True,
+        help="When enabled, AI will suggest 3-6 adjacent fields related to your input. "
+             "You can review and select which ones to add.",
+    )
+
+    new_domain = st.text_input(
+        "New domain",
+        placeholder="e.g. quantum computing, bio, defense",
+        key="add_domain_input",
+        label_visibility="collapsed",
+    )
+
+    if st.button("Add", type="primary", key="add_domain_btn"):
+        if new_domain and new_domain.strip():
+            clean = new_domain.strip().lower()
+            if use_ai:
+                with st.spinner(f"Finding domains related to '{clean}'..."):
+                    suggestions = _expand_domain_with_ai(clean)
+                if clean not in suggestions:
+                    suggestions = [clean] + suggestions
+                new_suggestions = [s for s in suggestions if s not in domains]
+                if new_suggestions:
+                    st.session_state["_pending_suggestions"] = new_suggestions
+                else:
+                    st.info("All suggested domains are already in your list.")
             else:
-                st.warning(f"'{clean}' is already in your domains.")
+                if clean not in domains:
+                    _upsert_profile_domains(target_email, domains + [clean], profile_name, profile_role)
+                    _clear_profile_cache()
+                    st.success(f"Added '{clean}'.")
+                    st.rerun()
+                else:
+                    st.warning(f"'{clean}' is already in your domains.")
 
-# Show pending AI suggestions for review
-if "_pending_suggestions" in st.session_state:
-    suggestions = st.session_state["_pending_suggestions"]
-    st.markdown("**AI suggestions** — select which to add:")
-
-    selected = []
-    cols_per_row = 3
-    for row_start in range(0, len(suggestions), cols_per_row):
-        row = suggestions[row_start:row_start + cols_per_row]
-        cols = st.columns(cols_per_row)
-        for col_idx, s in enumerate(row):
-            with cols[col_idx]:
-                if st.checkbox(s, value=True, key=f"sug_{s}"):
-                    selected.append(s)
-
-    col_confirm, col_cancel = st.columns(2)
-    with col_confirm:
-        if st.button("Add selected", type="primary", key="confirm_suggestions"):
-            if selected:
-                new_extra = extra_domains + [s for s in selected if s not in extra_domains]
-                _upsert_preferences(target_email, new_extra, current_notes)
-                st.session_state.pop("user_profile", None)
+    # Pending AI suggestions for review
+    if "_pending_suggestions" in st.session_state:
+        suggestions = st.session_state["_pending_suggestions"]
+        st.markdown("**AI suggestions** — select which to add:")
+        selected = []
+        cols_per_row = 3
+        for row_start in range(0, len(suggestions), cols_per_row):
+            row = suggestions[row_start:row_start + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for col_idx, s in enumerate(row):
+                with cols[col_idx]:
+                    if st.checkbox(s, value=True, key=f"sug_{s}"):
+                        selected.append(s)
+        col_confirm, col_cancel = st.columns(2)
+        with col_confirm:
+            if st.button("Add selected", type="primary", key="confirm_suggestions"):
+                if selected:
+                    new_domains = domains + [s for s in selected if s not in domains]
+                    _upsert_profile_domains(target_email, new_domains, profile_name, profile_role)
+                    _clear_profile_cache()
+                    st.session_state.pop("_pending_suggestions", None)
+                    st.success(f"Added {len(selected)} domain{'s' if len(selected) != 1 else ''}.")
+                    st.rerun()
+        with col_cancel:
+            if st.button("Cancel", key="cancel_suggestions"):
                 st.session_state.pop("_pending_suggestions", None)
-                for k in list(st.session_state.keys()):
-                    if k.startswith("_domain_embedding"):
-                        del st.session_state[k]
-                st.success(f"Added {len(selected)} domain{'s' if len(selected) != 1 else ''}.")
                 st.rerun()
-    with col_cancel:
-        if st.button("Cancel", key="cancel_suggestions"):
-            st.session_state.pop("_pending_suggestions", None)
-            st.rerun()
 
 # ---------------------------------------------------------------------------
 # Notes
@@ -376,7 +358,7 @@ updated_notes = st.text_area(
 )
 if updated_notes != current_notes:
     if st.button("Save notes", key="save_notes"):
-        _upsert_preferences(target_email, extra_domains, updated_notes)
-        st.session_state.pop("user_profile", None)
+        _upsert_notes(target_email, updated_notes)
+        _clear_profile_cache()
         st.success("Notes saved.")
         st.rerun()

@@ -294,57 +294,43 @@ def _resolve_profile(force_refresh=False):
     # Check for persona override (Engineering users only)
     persona_key = st.session_state.get("_persona_override")
     if persona_key:
-        profiles = all_profiles()
-        if persona_key in profiles:
-            profile = dict(profiles[persona_key])
+        if persona_key in all_profiles():
+            # Domains come from user_profiles (via get_profile) — single source of truth.
+            persona_email = f"{persona_key}@lunarventures.eu"
+            profile = get_profile(persona_email)
             profile["_simulated"] = True
             profile["_real_email"] = email
             profile["_persona_key"] = persona_key
-            # Merge user_preferences for the simulated persona's email
-            persona_email = f"{persona_key}@lunarventures.eu"
-            try:
-                from lib import supabase_client as sb
-                prefs = sb.query_fresh("user_preferences", {
-                    "email": f"eq.{persona_email}",
-                    "limit": "1",
-                })
-                if prefs:
-                    pref = prefs[0]
-                    extra = pref.get("extra_domains") or []
-                    if extra:
-                        profile["domains"] = list(profile["domains"]) + [
-                            d for d in extra if d not in profile["domains"]
-                        ]
-                    profile["notes"] = pref.get("notes", "")
-                    profile["hidden_sources"] = pref.get("hidden_sources") or []
-            except Exception:
-                pass
+            _merge_preferences(profile, persona_email)
             st.session_state["user_profile"] = profile
             return profile
 
     profile = get_profile(email.strip(), fallback_name=name)
+    _merge_preferences(profile, email)
 
-    # Try to merge Supabase user_preferences (extra_domains, notes)
+    st.session_state["user_profile"] = profile
+    return profile
+
+
+def _merge_preferences(profile, email):
+    """Layer notes + hidden_sources from user_preferences onto a profile.
+
+    Domains are NOT merged here — they live in user_profiles (the source of truth)
+    and arrive via get_profile(). The deprecated extra_domains column is ignored.
+    """
+    canon = (email or "").lower().strip().replace("@lunar.vc", "@lunarventures.eu")
     try:
         from lib import supabase_client as sb
         prefs = sb.query_fresh("user_preferences", {
-            "email": f"eq.{email.lower()}",
+            "email": f"eq.{canon}",
             "limit": "1",
         })
         if prefs:
             pref = prefs[0]
-            extra = pref.get("extra_domains") or []
-            if extra:
-                profile["domains"] = list(profile["domains"]) + [
-                    d for d in extra if d not in profile["domains"]
-                ]
             profile["notes"] = pref.get("notes", "")
             profile["hidden_sources"] = pref.get("hidden_sources") or []
     except Exception:
-        pass  # Supabase unavailable — use base profile
-
-    st.session_state["user_profile"] = profile
-    return profile
+        pass  # Supabase unavailable — use profile as-is
 
 
 # ---------------------------------------------------------------------------

@@ -1,8 +1,13 @@
 """User profiles for Lunar Ventures team members.
 
 Maps logged-in email → profile with role, domains, page visibility.
-Base profiles are static; user-customizable preferences live in Supabase
-(user_preferences table) and are merged at runtime by style.apply().
+
+The Supabase `user_profiles` table (migration 025) is the SINGLE SOURCE OF TRUTH
+for domains — `get_profile()` reads from it, and the same table backs the
+ambient-sourcing plugin, so domain edits made in either surface stay consistent.
+The `_PROFILES` dict below is only an OFFLINE FALLBACK SEED, used when a DB row
+is missing (e.g. before migration 025 is applied or if Supabase is unreachable).
+`hidden_sources` + `notes` still live in `user_preferences`.
 """
 
 from __future__ import annotations
@@ -143,20 +148,60 @@ for _key, _prof in _PROFILES.items():
 
 
 def all_profiles():
-    """Return all known profiles as a dict of key → profile."""
+    """Return all known profiles as a dict of key → profile (seed roster)."""
     return dict(_PROFILES)
+
+
+def _canonical_email(email):
+    """@lunar.vc is an alias for @lunarventures.eu; profiles are keyed by the latter."""
+    return (email or "").lower().strip().replace("@lunar.vc", "@lunarventures.eu")
+
+
+def _fetch_profile_row(email):
+    """Fetch the canonical profile row from the user_profiles table (cached 5 min)."""
+    canon = _canonical_email(email)
+    if not canon:
+        return None
+    try:
+        from lib import supabase_client as sb
+
+        rows = sb.query_table(
+            "user_profiles",
+            {
+                "email": f"eq.{canon}",
+                "select": "email,profile_key,name,linear_id,role,domains,description,visible_pages",
+                "limit": "1",
+            },
+        )
+        return rows[0] if rows else None
+    except Exception:
+        return None  # Supabase unavailable — caller falls back to the seed
 
 
 def get_profile(email, fallback_name=None):
     """Look up a user profile by email.
 
-    Returns the matching profile or a default profile for unknown Lunar emails.
-    The returned dict is a copy safe to mutate (e.g., merging extra_domains).
+    Reads domains/role/etc from the user_profiles table (source of truth). Falls
+    back to the hardcoded `_PROFILES` seed if there's no DB row, then to a default
+    profile for unknown Lunar emails. The returned dict is a copy safe to mutate.
     """
-    profile = _EMAIL_MAP.get(email.lower())
+    row = _fetch_profile_row(email)
+    if row:
+        return {
+            "name": row.get("name") or fallback_name or email,
+            "linear_id": row.get("linear_id"),
+            "role": row.get("role") or "General Partner",
+            "domains": list(row.get("domains") or []),
+            "description": row.get("description") or "",
+            "visible_pages": list(row.get("visible_pages") or _GP_PAGES),
+        }
+
+    # No DB row — fall back to the hardcoded seed.
+    profile = _EMAIL_MAP.get(_canonical_email(email))
     if profile:
         return dict(profile)
-    # Unknown email — return default with name filled in
+
+    # Unknown email — return default with name filled in.
     result = dict(_DEFAULT_PROFILE)
-    result["name"] = fallback_name or email.split("@")[0].title()
+    result["name"] = fallback_name or (email.split("@")[0].title() if email else "Guest")
     return result
